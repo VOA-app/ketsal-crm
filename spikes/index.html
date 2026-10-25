@@ -455,6 +455,7 @@
       record('disk', 'list', 'Список папки приложения', false, 'ответ не дошёл до страницы: вероятно, на cloud-api.yandex.net нет CORS');
       return;
     }
+    record('disk', 'upload', 'Загрузка 5 МБ', null, 'готовим файл и запрашиваем ссылку…');
     const data = randomBytes(5 * 1024 * 1024);
     const sum = await sha256hex(data);
     try {
@@ -464,6 +465,7 @@
       const host = new URL(j.href).host;
       hosts.add(host);
       const t0 = performance.now();
+      record('disk', 'upload', 'Загрузка 5 МБ по ссылке Диска', null, `идёт, хост ${host}… дождитесь результата`);
       try {
         const put = await fetch(j.href, { method: j.method || 'PUT', body: data });
         record('disk', 'upload', 'Загрузка 5 МБ по ссылке Диска (CORS)', put.ok, `ответ ${put.status}, ${Math.round(performance.now() - t0)} мс, хост ${host}`);
@@ -486,6 +488,7 @@
         const host = new URL(j.href).host;
         hosts.add(host);
         const t0 = performance.now();
+        record('disk', 'download', 'Скачивание по ссылке Диска', null, `идёт, хост ${host}… дождитесь результата`);
         try {
           const g = await fetch(j.href);
           const finalHost = new URL(g.url).host;
