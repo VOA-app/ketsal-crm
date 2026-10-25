@@ -24,6 +24,17 @@ ClientID приложения в Яндекс OAuth: `8b5f91e91a17446f8240d6489c
 | Диск: скачивание и сверка (CORS на ссылке скачивания) | | | | |
 | Диск: удаление | | | | |
 
+## Предварительно: CORS по заголовкам (curl, 25.10.2026)
+
+Запросы с `Origin: https://voa-app.github.io` без токена. Браузерную проверку не заменяет.
+
+| Адрес | Ответ |
+|---|---|
+| `POST oauth.yandex.ru/token` (и preflight) | `Access-Control-Allow-Origin: *`, Content-Type разрешён, ошибка `invalid_grant` читается |
+| `cloud-api.yandex.net/v1/disk/resources` GET, DELETE (и preflight с Authorization) | `Access-Control-Allow-Origin: https://voa-app.github.io` |
+| `downloader.disk.yandex.ru` (preflight) | `Access-Control-Allow-Origin: *`, GET |
+| `uploader*.disk.yandex.net` | не проверено: нужен настоящий href от `/upload` |
+
 ## Хосты для CSP
 
 ## Решения по итогам
