@@ -457,6 +457,8 @@ interface StorageAdapter {
 
 `YandexDiskAdapter` реализует его через REST API Диска: `GET /v1/disk/resources`, `GET …/download` → href → GET, `GET …/upload?overwrite=true` → href → PUT, `DELETE`.
 
+**GET по href скачивания — только с `referrerPolicy: 'no-referrer'`** (этап 0, 25.10.2026): с Referer чужого сайта `downloader.disk.yandex.ru` отвечает 403 без CORS, без Referer отдаёт файл (с перенаправлением на `*.storage.yandex.net`).
+
 ### 6.4. ⚠️ Главный технический риск: CORS
 
 Нужно проверить, отдают ли **ссылки на скачивание и загрузку** Диска заголовки CORS для прямых запросов из браузера. Это же касается `oauth.yandex.ru/token`. Проверка — **этап 0** (`spikes/index.html`).
@@ -586,13 +588,14 @@ interface PhotoRef {
   style-src 'self';
   font-src 'self';
   img-src 'self' blob: data:;
-  connect-src 'self' https://cloud-api.yandex.net https://oauth.yandex.ru https://*.disk.yandex.net https://*.disk.yandex.ru;
+  connect-src 'self' https://cloud-api.yandex.net https://oauth.yandex.ru https://*.disk.yandex.net https://*.disk.yandex.ru https://*.storage.yandex.net;
   worker-src 'self';
   base-uri 'none';
   form-action 'none';
   ```
   Точный список `connect-src` — по хостам из `spikes/RESULTS.md`. `frame-ancestors` в meta не работает; на GitHub Pages защита от встраивания — через `if (window.top !== window.self)` → пустой экран.
 - **Service Worker:** precache всех ассетов. Новая версия **не** активируется молча: «Доступно обновление → Обновить».
+- **`<meta name="referrer" content="no-referrer">`** на всё приложение: адрес страницы не уходит на чужие хосты, и скачивание с Диска работает (§6.3).
 - **Сборка без source maps.** Версия и хэш коммита видны в «Ещё → О приложении».
 
 ---
@@ -688,3 +691,4 @@ interface PhotoRef {
 | Хостинг | GitHub Pages, открытый репозиторий без данных | 25.09.2026 |
 | Быстрый вход | Face ID, если работает PRF; иначе код из 6 цифр; или только пароль | 25.09.2026 |
 | Бланки согласий | Готовы у салона | 25.09.2026 |
+| Прокси для Диска | На ПК не нужен: вход, список, загрузка, скачивание (без Referer) и удаление работают из браузера напрямую. Окончательно — после проверки на iPhone | 25.10.2026 |

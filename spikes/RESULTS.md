@@ -21,7 +21,8 @@ ClientID приложения в Яндекс OAuth: `8b5f91e91a17446f8240d6489c
 | Возврат после входа в режиме «Домой» | — | — | | |
 | Диск: список (CORS на `cloud-api.yandex.net`) | ✓ 200 | | | |
 | Диск: загрузка 5 МБ (CORS на ссылке загрузки) | ✓ 201, 41 с, `uploader…disk.yandex.net` | | | |
-| Диск: скачивание и сверка (CORS на ссылке скачивания) | ✗ ответ `downloader.disk.yandex.ru` не читается страницей | | | |
+| Диск: скачивание, обычный запрос | ✗ 403 без CORS от `downloader.disk.yandex.ru` | | | |
+| Диск: скачивание без Referer и сверка | ✓ 200, 0,5 с, байты совпали, `downloader.disk.yandex.ru` → `mds.storage.yandex.net` | | | |
 | Диск: удаление | ✓ 204 | | | |
 
 ## Предварительно: CORS по заголовкам (curl, 25.10.2026)
@@ -37,10 +38,12 @@ ClientID приложения в Яндекс OAuth: `8b5f91e91a17446f8240d6489c
 
 ## Хосты для CSP
 
+На ПК (Chrome): `cloud-api.yandex.net`, `oauth.yandex.ru`, `uploader*.disk.yandex.net`, `downloader.disk.yandex.ru`, `mds.storage.yandex.net` (перенаправление при скачивании). Последнего нет в `connect-src` из SPEC §11 — добавить `https://*.storage.yandex.net`.
+
 ## Решения по итогам
 
-- Поток входа:
-- Нужен ли прокси на Yandex Cloud Functions:
+- Поток входа: код + PKCE без client secret работает из браузера (ПК). Ждём iPhone, особенно возврат в режиме «Домой».
+- Нужен ли прокси на Yandex Cloud Functions: на ПК **не нужен**. `downloader.disk.yandex.ru` отвечает 403 без CORS, если запрос несёт Referer чужого сайта; с `referrerPolicy: 'no-referrer'` отдаёт файл. Подтвердить на iPhone.
 - Быстрый вход (Face ID или код):
 - Число итераций PBKDF2:
 
@@ -83,3 +86,13 @@ Preflight на `downloader.disk.yandex.ru` отдаёт `Access-Control-Allow-Or
 - ✓ Удаление — ответ 204
 
 Консоль Chrome: `GET https://downloader.disk.yandex.ru/disk/… net::ERR_FAILED 403 (Forbidden)`, `No 'Access-Control-Allow-Origin' header`. Перенаправления нет: downloader сам отказывает запросу со страницы (403). Следующая проверка — запрос без Referer; если тоже 403, скачивание из браузера невозможно, нужен прокси (§6.4).
+
+### ПК, Chrome 156, вкладка — 25.10.2026, 22:58 (скачивание без Referer)
+
+- ✓ PBKDF2 600 000 — 125 мс; AES-GCM 1 МБ — 2 мс; IndexedDB 1 МБ — 478 мс
+- ✓ Вход код + PKCE, токен ≈ 365 дн., refresh_token есть
+- ✓ Список — 200; загрузка 5 МБ — 201, 40658 мс, uploader34ionccm.disk.yandex.net
+- ✗ Скачивание, обычный запрос — нет CORS (403)
+- ✓ Скачивание, без Referer, и сверка — ответ 200, 471 мс, байты совпали, downloader.disk.yandex.ru → mds.storage.yandex.net
+- ✓ Удаление — 204
+- · Хосты для CSP — cloud-api.yandex.net, uploader34ionccm.disk.yandex.net, downloader.disk.yandex.ru, mds.storage.yandex.net
