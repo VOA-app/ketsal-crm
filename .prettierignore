@@ -1,0 +1,8 @@
+dist
+dev-dist
+prototype
+spikes
+site
+public
+package-lock.json
+*.md

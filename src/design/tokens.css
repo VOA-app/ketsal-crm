@@ -1,0 +1,109 @@
+/* Цвета брендбука «Кетсаль» (SPEC §10.2). Изумруд — акценты и кнопки, не больше четверти экрана;
+   алый — только точки-маркеры и число на значке. Светлая и тёмная темы. */
+
+:root {
+  --emerald: #217870;
+  --deep: #14514b;
+  --light-emerald: #5fa49d;
+  --mint: #e7f0ee;
+  --graphite: #2b2223;
+  --milk: #f7f4f0;
+  --gray: #6e7674;
+  --line: #dfe4e2;
+  --scarlet: #d00405;
+
+  --bg: #f7f4f0;
+  --surface: #ffffff;
+  --surface-2: #e7f0ee;
+  --text: #2b2223;
+  --text-2: #6e7674;
+  --line-c: #dfe4e2;
+  --accent: #217870;
+  --accent-press: #14514b;
+  --accent-text: #217870;
+  --accent-soft: #e7f0ee;
+  --accent-ink: #14514b;
+  --on-accent: #ffffff;
+  --alert: #d00405;
+  --danger-text: #b80304;
+  --seg-bg: #ece8e2;
+  --bar: #217870;
+  --bar-muted: #c9d5d2;
+  --grid: #e6eae8;
+  --backdrop: rgba(43, 34, 35, 0.42);
+  --shadow-2: 0 12px 36px rgba(43, 34, 35, 0.14);
+  --toast-bg: #2b2223;
+  --toast-fg: #ffffff;
+  --stage-bg: #efebe5;
+  --logo-word: #2b2223;
+  --logo-bird: #217870;
+  --bird-sil: rgba(33, 120, 112, 0.12);
+  --focus: rgba(33, 120, 112, 0.22);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #1c1617;
+  --surface: #272021;
+  --surface-2: #1d2f2d;
+  --text: #f3efea;
+  --text-2: #a7aeac;
+  --line-c: #3a3233;
+  --accent: #217870;
+  --accent-press: #1a655e;
+  --accent-text: #6fb5ad;
+  --accent-soft: #1d2f2d;
+  --accent-ink: #9cd1ca;
+  --on-accent: #ffffff;
+  --alert: #e2302f;
+  --danger-text: #f08a87;
+  --seg-bg: #151011;
+  --bar: #4fa39a;
+  --bar-muted: #3e4a48;
+  --grid: #332b2c;
+  --backdrop: rgba(0, 0, 0, 0.58);
+  --shadow-2: 0 12px 36px rgba(0, 0, 0, 0.45);
+  --toast-bg: #f3efea;
+  --toast-fg: #2b2223;
+  --stage-bg: #141011;
+  --logo-word: #ffffff;
+  --logo-bird: #ffffff;
+  --bird-sil: rgba(255, 255, 255, 0.07);
+  --focus: rgba(111, 181, 173, 0.3);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1c1617;
+    --surface: #272021;
+    --surface-2: #1d2f2d;
+    --text: #f3efea;
+    --text-2: #a7aeac;
+    --line-c: #3a3233;
+    --accent: #217870;
+    --accent-press: #1a655e;
+    --accent-text: #6fb5ad;
+    --accent-soft: #1d2f2d;
+    --accent-ink: #9cd1ca;
+    --on-accent: #ffffff;
+    --alert: #e2302f;
+    --danger-text: #f08a87;
+    --seg-bg: #151011;
+    --bar: #4fa39a;
+    --bar-muted: #3e4a48;
+    --grid: #332b2c;
+    --backdrop: rgba(0, 0, 0, 0.58);
+    --shadow-2: 0 12px 36px rgba(0, 0, 0, 0.45);
+    --toast-bg: #f3efea;
+    --toast-fg: #2b2223;
+    --stage-bg: #141011;
+    --logo-word: #ffffff;
+    --logo-bird: #ffffff;
+    --bird-sil: rgba(255, 255, 255, 0.07);
+    --focus: rgba(111, 181, 173, 0.3);
+    color-scheme: dark;
+  }
+}
