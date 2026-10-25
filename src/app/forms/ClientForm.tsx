@@ -22,7 +22,11 @@ const F = ru.clientForm;
 
 export type Consents = Client['consents'];
 
-export const emptyConsents = (): Consents => ({ pd: { date: '', photos: [] }, procedure: { date: '', photos: [] }, health: { date: '' } });
+export const emptyConsents = (): Consents => ({
+  pd: { date: '', photos: [] },
+  procedure: { date: '', photos: [] },
+  health: { date: '' },
+});
 
 export const normalizeConsents = (x?: Partial<Consents> | null): Consents => ({
   pd: { date: x?.pd?.date || '', photos: (x?.pd?.photos || []).slice() },
@@ -54,7 +58,14 @@ export function ConsentEditor({
         {photos && <span className="opt">{F.consentOpt}</span>}
       </span>
       <div className="inline-actions">
-        <input className="input" type="date" value={date} max={today} onChange={(e) => onDate(e.target.value)} aria-label={F.consentDate(label)} />
+        <input
+          className="input"
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => onDate(e.target.value)}
+          aria-label={F.consentDate(label)}
+        />
         <button type="button" className="btn btn-secondary" onClick={() => onDate(today)}>
           {ru.common.today}
         </button>
@@ -136,9 +147,9 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
     }
     return base;
   });
-  const sheet = useSheet(() => {
+  const sheet = useSheet((close) => {
     photos.discard();
-    sheet.close();
+    close();
   });
   const up = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
   const upConsent = (k: 'pd' | 'procedure', patch: Partial<Consents['pd']>) =>
@@ -149,7 +160,11 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
 
   const addConsentPhoto = async (k: 'pd' | 'procedure') => {
     const refs = await photos.add();
-    if (refs.length) setD((x) => ({ ...x, consents: { ...x.consents, [k]: { ...x.consents[k], photos: [...x.consents[k].photos, ...refs] } } }));
+    if (refs.length)
+      setD((x) => ({
+        ...x,
+        consents: { ...x.consents, [k]: { ...x.consents[k], photos: [...x.consents[k].photos, ...refs] } },
+      }));
   };
   const delConsentPhoto = (k: 'pd' | 'procedure', i: number) => {
     const r = d.consents[k].photos[i];
@@ -174,7 +189,12 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
     }
     const twin = findByPhone(idx, phone, d.id ?? undefined);
     if (twin && !src) {
-      const ok = await ui().confirm({ title: F.dupTitle, text: F.dupText(fullName(twin), twin.cardNo), ok: F.dupOk, danger: false });
+      const ok = await ui().confirm({
+        title: F.dupTitle,
+        text: F.dupText(fullName(twin), twin.cardNo),
+        ok: F.dupOk,
+        danger: false,
+      });
       if (!ok) return;
     }
     const rec: Entity<Client> = {
@@ -214,18 +234,41 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
       <SheetBody>
         <div className="form-card">
           <Field label={F.cardNo} opt={isNew ? F.cardNoAuto : ''} err={errors.cardNo}>
-            <input className="input" inputMode="numeric" value={d.cardNo} onChange={(e) => up({ cardNo: e.target.value })} />
+            <input
+              className="input"
+              inputMode="numeric"
+              value={d.cardNo}
+              onChange={(e) => up({ cardNo: e.target.value })}
+            />
           </Field>
           <div className="grid-2">
             <Field label={F.firstName} err={errors.firstName}>
-              <input className="input" value={d.firstName} onChange={(e) => up({ firstName: e.target.value })} autoComplete="off" autoCapitalize="words" />
+              <input
+                className="input"
+                value={d.firstName}
+                onChange={(e) => up({ firstName: e.target.value })}
+                autoComplete="off"
+                autoCapitalize="words"
+              />
             </Field>
             <Field label={F.lastName}>
-              <input className="input" value={d.lastName} onChange={(e) => up({ lastName: e.target.value })} autoComplete="off" autoCapitalize="words" />
+              <input
+                className="input"
+                value={d.lastName}
+                onChange={(e) => up({ lastName: e.target.value })}
+                autoComplete="off"
+                autoCapitalize="words"
+              />
             </Field>
           </div>
           <Field label={F.middleName} opt={ru.common.optional}>
-            <input className="input" value={d.middleName} onChange={(e) => up({ middleName: e.target.value })} autoComplete="off" autoCapitalize="words" />
+            <input
+              className="input"
+              value={d.middleName}
+              onChange={(e) => up({ middleName: e.target.value })}
+              autoComplete="off"
+              autoCapitalize="words"
+            />
           </Field>
           <Field label={F.phone} err={errors.phone}>
             <input
@@ -258,7 +301,12 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
           <Field label={F.where} as="div">
             <Chips>
               {CONTACT_KINDS.map((k) => (
-                <Chip key={k} label={CONTACT[k]} on={d.contact.kind === k} onClick={() => up({ contact: { ...d.contact, kind: k } })} />
+                <Chip
+                  key={k}
+                  label={CONTACT[k]}
+                  on={d.contact.kind === k}
+                  onClick={() => up({ contact: { ...d.contact, kind: k } })}
+                />
               ))}
             </Chips>
           </Field>
@@ -275,7 +323,13 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
             </Field>
           )}
           <Field label={F.birth} opt={F.birthOpt} err={errors.birth}>
-            <input className="input" type="date" value={d.birth} max={todayISO()} onChange={(e) => up({ birth: e.target.value })} />
+            <input
+              className="input"
+              type="date"
+              value={d.birth}
+              max={todayISO()}
+              onChange={(e) => up({ birth: e.target.value })}
+            />
           </Field>
         </div>
         <div className="form-title">{F.source}</div>
@@ -287,7 +341,12 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
         <div className="form-title">{F.tags}</div>
         <Chips>
           {data.lists.tags.map((t) => (
-            <Chip key={t} label={t} on={d.tags.includes(t)} onClick={() => up({ tags: d.tags.includes(t) ? d.tags.filter((x) => x !== t) : [...d.tags, t] })} />
+            <Chip
+              key={t}
+              label={t}
+              on={d.tags.includes(t)}
+              onClick={() => up({ tags: d.tags.includes(t) ? d.tags.filter((x) => x !== t) : [...d.tags, t] })}
+            />
           ))}
         </Chips>
         <div className="form-title">
@@ -333,7 +392,12 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
           <p className="hint">{F.consentHint}</p>
         </div>
         <div className="form-title">{F.notes}</div>
-        <textarea className="textarea" value={d.notes} onChange={(e) => up({ notes: e.target.value })} placeholder={F.notesPlaceholder} />
+        <textarea
+          className="textarea"
+          value={d.notes}
+          onChange={(e) => up({ notes: e.target.value })}
+          placeholder={F.notesPlaceholder}
+        />
       </SheetBody>
       <SheetFoot>
         {isNew ? (

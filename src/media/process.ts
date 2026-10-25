@@ -40,7 +40,9 @@ function draw(src: ImageBitmap | HTMLImageElement, w: number, h: number): HTMLCa
 }
 
 const toJpeg = (cv: HTMLCanvasElement, q: number) =>
-  new Promise<Blob>((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('encode'))), 'image/jpeg', q));
+  new Promise<Blob>((resolve, reject) =>
+    cv.toBlob((b) => (b ? resolve(b) : reject(new Error('encode'))), 'image/jpeg', q),
+  );
 
 const fit = (w: number, h: number, max: number) => {
   const k = Math.min(1, max / Math.max(w, h));

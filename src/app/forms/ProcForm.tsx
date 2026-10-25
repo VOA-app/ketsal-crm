@@ -1,7 +1,14 @@
 // Форма процедуры (SPEC §10.1): порядок полей как в прототипе, предупреждения, «как в прошлый раз».
 import { useMemo, useRef, useState } from 'react';
 import { availableCerts, relinkCertificates } from '../../domain/certificates';
-import { HEALING as HEALING_IDS, PAYMENTS, PHOTO_STAGES, STATUSES, VISIT_TYPES, MODEL_TAG } from '../../domain/constants';
+import {
+  HEALING as HEALING_IDS,
+  PAYMENTS,
+  PHOTO_STAGES,
+  STATUSES,
+  VISIT_TYPES,
+  MODEL_TAG,
+} from '../../domain/constants';
 import { addDays, isISO, todayISO } from '../../domain/dates';
 import { ulid } from '../../domain/ids';
 import type { DomainIndex } from '../../domain/indexing';
@@ -52,16 +59,21 @@ function serviceOptions(idx: DomainIndex, d: ProcDraft): SelectGroup[] {
 }
 
 const anestOptions = (idx: DomainIndex, stage: 'primary' | 'secondary', current: string) =>
-  idx.data.anesthetics.filter((a) => a.stage === stage && (a.active || a.id === current)).map((a) => ({ value: a.id, label: a.name }));
+  idx.data.anesthetics
+    .filter((a) => a.stage === stage && (a.active || a.id === current))
+    .map((a) => ({ value: a.id, label: a.name }));
 
 function pigmentOptions(idx: DomainIndex, d: ProcDraft, current: string): SelectGroup[] {
   const removal = d.type === 'removal';
-  const all = idx.data.pigments.filter((p) => (p.active || p.id === current) && (removal ? p.kind === 'Ремувер' : p.kind !== 'Ремувер'));
+  const all = idx.data.pigments.filter(
+    (p) => (p.active || p.id === current) && (removal ? p.kind === 'Ремувер' : p.kind !== 'Ремувер'),
+  );
   const opt = (p: (typeof all)[number]) => ({ value: p.id, label: `${p.name} (${p.brand})` });
   const forZone = all.filter((p) => !d.zone || p.zones.includes(d.zone));
   const others = all.filter((p) => d.zone && !p.zones.includes(d.zone));
   const groups: SelectGroup[] = [];
-  if (forZone.length) groups.push({ group: d.zone ? P.pigmentsForZone(zoneName(idx, d.zone)) : P.pigments, items: forZone.map(opt) });
+  if (forZone.length)
+    groups.push({ group: d.zone ? P.pigmentsForZone(zoneName(idx, d.zone)) : P.pigments, items: forZone.map(opt) });
   if (others.length) groups.push({ group: P.pigmentsOther, items: others.map(opt) });
   return groups;
 }
@@ -120,16 +132,23 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
   const orig = procId ? idx.proc.get(procId) : undefined;
   const c = idx.client.get(clientId || orig?.clientId || '')!;
   const photos = usePhotoDraft();
-  const [d, setD] = useState<ProcDraft>(() => draft ?? (orig ? draftFromProc(idx, orig) : newProcDraft(c.id, todayISO())));
+  const [d, setD] = useState<ProcDraft>(
+    () => draft ?? (orig ? draftFromProc(idx, orig) : newProcDraft(c.id, todayISO())),
+  );
   const initial = useRef(JSON.stringify(d));
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const sheet = useSheet(async () => {
+  const sheet = useSheet(async (close) => {
     if (JSON.stringify(d) !== initial.current) {
-      const ok = await ui().confirm({ title: P.discardTitle, text: P.discardText, ok: P.discardOk, cancel: P.discardStay });
+      const ok = await ui().confirm({
+        title: P.discardTitle,
+        text: P.discardText,
+        ok: P.discardOk,
+        cancel: P.discardStay,
+      });
       if (!ok) return;
     }
     photos.discard();
-    sheet.close();
+    close();
   });
 
   /** Изменить черновик: копия, правка, пересчёт «как зажила». */
@@ -145,7 +164,11 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
   const removal = d.type === 'removal';
   const svc = idx.service.get(d.serviceId);
   const prev = !d.id
-    ? uniq(procsOf(idx, c.id).filter((p) => p.status === 'done' && p.type !== 'removal').map((p) => p.zone))
+    ? uniq(
+        procsOf(idx, c.id)
+          .filter((p) => p.status === 'done' && p.type !== 'removal')
+          .map((p) => p.zone),
+      )
         .map((z) => lastInZone(idx, c.id, z))
         .filter((p): p is Entity<Procedure> => !!p)
     : [];
@@ -159,8 +182,21 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
   const quickFill = (base: Entity<Procedure>) => {
     const nd = repeatDraft(idx, c.id, base.zone, idx.today, base.id);
     mut((x) => {
-      const keep = ['id', 'clientId', 'date', 'photos', 'note', 'status', 'payment', 'certificateId', 'discount', 'model', 'createdAt'];
-      for (const k of Object.keys(nd) as (keyof ProcDraft)[]) if (!keep.includes(k)) (x as unknown as Record<string, unknown>)[k] = nd[k];
+      const keep = [
+        'id',
+        'clientId',
+        'date',
+        'photos',
+        'note',
+        'status',
+        'payment',
+        'certificateId',
+        'discount',
+        'model',
+        'createdAt',
+      ];
+      for (const k of Object.keys(nd) as (keyof ProcDraft)[])
+        if (!keep.includes(k)) (x as unknown as Record<string, unknown>)[k] = nd[k];
     });
     ui().toast(P.quickFilled(fmtDate(base.date, true)));
   };
@@ -213,13 +249,19 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
       zone: d.zone,
       technique: d.type === 'removal' ? '' : d.technique,
       anesthesia: { primary: d.anesthesia.primary || '', secondary: d.anesthesia.secondary || '' },
-      pigments: d.pigments.filter((g) => g.pigmentId).map((g) => ({ pigmentId: g.pigmentId, lot: g.lot || '', ratio: g.ratio.trim() })),
+      pigments: d.pigments
+        .filter((g) => g.pigmentId)
+        .map((g) => ({ pigmentId: g.pigmentId, lot: g.lot || '', ratio: g.ratio.trim() })),
       needles: d.needles.slice(),
       photos: structuredClone(d.photos),
       healing: { status: d.healing.status || '', note: d.healing.note.trim() },
       note: d.note.trim(),
       price: d.price,
-      discount: { mode: d.discount.mode, value: Number(d.discount.value) || 0, reason: d.discount.value ? d.discount.reason : '' },
+      discount: {
+        mode: d.discount.mode,
+        value: Number(d.discount.value) || 0,
+        reason: d.discount.value ? d.discount.reason : '',
+      },
       payment: d.payment,
       certificateId: d.payment === 'cert' ? d.certificateId : '',
       status: d.status,
@@ -234,10 +276,15 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
       });
       if (d.prevHealing) {
         const t = tx.data.procedures.find((p) => p.id === d.prevHealing!.procId);
-        if (t) tx.put('procedures', { ...t, healing: { status: d.prevHealing.status || '', note: d.prevHealing.note.trim() } });
+        if (t)
+          tx.put('procedures', {
+            ...t,
+            healing: { status: d.prevHealing.status || '', note: d.prevHealing.note.trim() },
+          });
       }
       const cl = tx.data.clients.find((x) => x.id === rec.clientId);
-      if (cl && rec.model.on && !cl.tags.includes(MODEL_TAG)) tx.put('clients', { ...cl, tags: [...cl.tags, MODEL_TAG] });
+      if (cl && rec.model.on && !cl.tags.includes(MODEL_TAG))
+        tx.put('clients', { ...cl, tags: [...cl.tags, MODEL_TAG] });
       tx.dropBlobs(removed);
     });
     sheet.close();
@@ -247,7 +294,8 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
         ? P.savedWindow(fmtDateShort(addDays(rec.date, st.corrFrom)), fmtDateShort(addDays(rec.date, st.corrTo)))
         : P.saved,
     );
-    if (andNext) setTimeout(() => openProcForm({ clientId: rec.clientId, draft: newProcDraft(rec.clientId, rec.date) }), 320);
+    if (andNext)
+      setTimeout(() => openProcForm({ clientId: rec.clientId, draft: newProcDraft(rec.clientId, rec.date) }), 320);
   }
 
   return (
@@ -280,7 +328,9 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
           <div className="warn-box mb-12">
             {warnings.map((w, i) => (
               <div key={i} className={`warn ${w.level === 'danger' ? 'warn--danger' : ''}`}>
-                <span className={`dot ${w.level === 'danger' ? 'dot--alert' : w.level === 'info' ? 'dot--muted' : 'dot--ink'}`} />
+                <span
+                  className={`dot ${w.level === 'danger' ? 'dot--alert' : w.level === 'info' ? 'dot--muted' : 'dot--ink'}`}
+                />
                 <div>
                   {warningText(idx, w)}
                   {'act' in w && (
@@ -290,7 +340,11 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
                         className="btn-link"
                         onClick={() => (w.act === 'health' ? openHealthForm(c.id) : openConsentsForm(c.id))}
                       >
-                        {w.code === 'healthMissing' ? ru.warnings.btnFill : w.code === 'healthOld' ? ru.warnings.btnUpdate : ru.warnings.btnAdd}
+                        {w.code === 'healthMissing'
+                          ? ru.warnings.btnFill
+                          : w.code === 'healthOld'
+                            ? ru.warnings.btnUpdate
+                            : ru.warnings.btnAdd}
                       </button>
                     </div>
                   )}
@@ -301,7 +355,12 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
         )}
         <div className="form-card">
           <Field label={P.date} err={errors.date}>
-            <input className="input" type="date" value={d.date} onChange={(e) => mut((x) => void (x.date = e.target.value))} />
+            <input
+              className="input"
+              type="date"
+              value={d.date}
+              onChange={(e) => mut((x) => void (x.date = e.target.value))}
+            />
           </Field>
           <Field label={P.service} opt={P.serviceOpt} err={errors.service} as="div">
             <Select
@@ -358,7 +417,12 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
             <Field label={P.technique} as="div">
               <Chips>
                 {zd.techniques.map((t) => (
-                  <Chip key={t} label={t} on={d.technique === t} onClick={() => mut((x) => void (x.technique = x.technique === t ? '' : t))} />
+                  <Chip
+                    key={t}
+                    label={t}
+                    on={d.technique === t}
+                    onClick={() => mut((x) => void (x.technique = x.technique === t ? '' : t))}
+                  />
                 ))}
               </Chips>
             </Field>
@@ -438,14 +502,22 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
                     })
                   }
                 />
-                <button type="button" className="icon-btn" aria-label={P.removePigment} onClick={() => mut((x) => void x.pigments.splice(i, 1))}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={P.removePigment}
+                  onClick={() => mut((x) => void x.pigments.splice(i, 1))}
+                >
                   <Icon name="trash" />
                 </button>
               </div>
               <div className="pg-bottom">
                 <Select
                   value={g.lot}
-                  options={lots.map((l) => ({ value: l.no, label: `${l.no}${l.exp && l.exp < d.date ? P.lotExpiredMark : ''}` }))}
+                  options={lots.map((l) => ({
+                    value: l.no,
+                    label: `${l.no}${l.exp && l.exp < d.date ? P.lotExpiredMark : ''}`,
+                  }))}
                   placeholder={lots.length ? P.lot : P.noLots}
                   ariaLabel={P.lot}
                   onChange={(v) => mut((x) => void (x.pigments[i].lot = v))}
@@ -480,7 +552,11 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
             mut((x) => {
               if (x.type === 'removal') {
                 const rem = data.pigments.find((p) => p.active && p.kind === 'Ремувер');
-                x.pigments.push({ pigmentId: rem?.id ?? '', lot: rem ? defaultLot(idx, rem.id, x.date) : '', ratio: '' });
+                x.pigments.push({
+                  pigmentId: rem?.id ?? '',
+                  lot: rem ? defaultLot(idx, rem.id, x.date) : '',
+                  ratio: '',
+                });
               } else x.pigments.push({ pigmentId: '', lot: '', ratio: '' });
             })
           }
@@ -495,7 +571,14 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
               key={n.id}
               label={n.name}
               on={d.needles.includes(n.id)}
-              onClick={() => mut((x) => void (x.needles = x.needles.includes(n.id) ? x.needles.filter((y) => y !== n.id) : [...x.needles, n.id]))}
+              onClick={() =>
+                mut(
+                  (x) =>
+                    void (x.needles = x.needles.includes(n.id)
+                      ? x.needles.filter((y) => y !== n.id)
+                      : [...x.needles, n.id]),
+                )
+              }
             />
           ))}
         </Chips>
@@ -539,11 +622,21 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
             <div className="form-card">
               <Chips className="mb-12">
                 {HEALING_IDS.map((h) => (
-                  <Chip key={h} label={HEALING[h]} on={d.healing.status === h} onClick={() => mut((x) => void (x.healing.status = x.healing.status === h ? '' : h))} />
+                  <Chip
+                    key={h}
+                    label={HEALING[h]}
+                    on={d.healing.status === h}
+                    onClick={() => mut((x) => void (x.healing.status = x.healing.status === h ? '' : h))}
+                  />
                 ))}
               </Chips>
               <Field label={P.healingComment}>
-                <input className="input" value={d.healing.note} autoComplete="off" onChange={(e) => mut((x) => void (x.healing.note = e.target.value))} />
+                <input
+                  className="input"
+                  value={d.healing.note}
+                  autoComplete="off"
+                  onChange={(e) => mut((x) => void (x.healing.note = e.target.value))}
+                />
               </Field>
             </div>
           </>
@@ -568,7 +661,13 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
             <div className="discount-row">
               <div className="seg" role="group" aria-label={P.discountIn}>
                 {(['pct', 'rub'] as const).map((m) => (
-                  <button key={m} type="button" className={d.discount.mode === m ? 'on' : ''} aria-pressed={d.discount.mode === m} onClick={() => mut((x) => void (x.discount.mode = m))}>
+                  <button
+                    key={m}
+                    type="button"
+                    className={d.discount.mode === m ? 'on' : ''}
+                    aria-pressed={d.discount.mode === m}
+                    onClick={() => mut((x) => void (x.discount.mode = m))}
+                  >
                     {m === 'pct' ? '%' : '₽'}
                   </button>
                 ))}
@@ -585,7 +684,12 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
             </div>
             <Chips className="mt-10">
               {data.lists.discountReasons.map((r) => (
-                <Chip key={r} label={r} on={d.discount.reason === r} onClick={() => mut((x) => void (x.discount.reason = x.discount.reason === r ? '' : r))} />
+                <Chip
+                  key={r}
+                  label={r}
+                  on={d.discount.reason === r}
+                  onClick={() => mut((x) => void (x.discount.reason = x.discount.reason === r ? '' : r))}
+                />
               ))}
             </Chips>
           </Field>
@@ -598,7 +702,8 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
                 x.model.on = v;
                 if (v && !x.discount.reason) {
                   x.discount.reason = MODEL_TAG;
-                  if (!x.model.courseId && data.courses.length) x.model.courseId = data.courses[data.courses.length - 1].id;
+                  if (!x.model.courseId && data.courses.length)
+                    x.model.courseId = data.courses[data.courses.length - 1].id;
                 }
               })
             }
@@ -642,7 +747,10 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
               <Field label={P.cert} err={errors.cert} as="div">
                 <Select
                   value={d.certificateId}
-                  options={certs.map((x) => ({ value: x.id, label: `№ ${x.no} · ${fmtMoney(x.amount)}${x.recipient ? ` · ${x.recipient}` : ''}` }))}
+                  options={certs.map((x) => ({
+                    value: x.id,
+                    label: `№ ${x.no} · ${fmtMoney(x.amount)}${x.recipient ? ` · ${x.recipient}` : ''}`,
+                  }))}
                   placeholder={P.certPick}
                   onChange={(v) => mut((x) => void (x.certificateId = v))}
                 />
@@ -662,7 +770,12 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
         </div>
 
         <div className="form-title">{P.note}</div>
-        <textarea className="textarea" value={d.note} placeholder={P.notePlaceholder} onChange={(e) => mut((x) => void (x.note = e.target.value))} />
+        <textarea
+          className="textarea"
+          value={d.note}
+          placeholder={P.notePlaceholder}
+          onChange={(e) => mut((x) => void (x.note = e.target.value))}
+        />
         {!d.id && (
           <button type="button" className="btn btn-ghost btn-block mt-14" onClick={() => save(true)}>
             {P.saveNext}

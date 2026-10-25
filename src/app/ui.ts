@@ -28,8 +28,7 @@ export interface ViewerItem {
 }
 
 export type ViewerState =
-  | { mode: 'single'; items: ViewerItem[]; i: number }
-  | { mode: 'compare'; a: ViewerItem; b: ViewerItem };
+  { mode: 'single'; items: ViewerItem[]; i: number } | { mode: 'compare'; a: ViewerItem; b: ViewerItem };
 
 interface ToastState {
   key: number;
@@ -92,7 +91,15 @@ export const useUi = create<UiState>((set, get) => ({
 
   toast(msg, opts = {}) {
     seq += 1;
-    set({ toastState: { key: seq, msg, action: opts.action, onAction: opts.onAction, ms: opts.ms ?? (opts.action ? 5000 : 2800) } });
+    set({
+      toastState: {
+        key: seq,
+        msg,
+        action: opts.action,
+        onAction: opts.onAction,
+        ms: opts.ms ?? (opts.action ? 5000 : 2800),
+      },
+    });
   },
   hideToast() {
     set({ toastState: null });

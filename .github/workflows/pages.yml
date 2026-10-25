@@ -23,11 +23,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # До этапа 6 публикуем стартовую страницу, прототип и проверки этапа 0.
-      # На этапе 6 сюда добавится сборка приложения (npm ci && npm run build → _site).
-      - name: Собрать сайт
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Проверки
         run: |
+          npm ci
+          npm run lint
+          npm test
+
+      # До этапа 6 публикуем стартовую страницу, прототип, проверки этапа 0
+      # и пробную сборку приложения с демо-данными в /app/ (данные — только на устройстве).
+      # На этапе 6 приложение переедет в корень сайта.
+      - name: Собрать сайт
+        env:
+          BASE: /ketsal-crm/app/
+          VITE_DEMO: '1'
+        run: |
+          npm run build
           mkdir -p _site/prototype _site/spikes
+          cp -r dist _site/app
           cp site/index.html _site/index.html
           cp prototype/index.html _site/prototype/index.html
           cp -r spikes/. _site/spikes/

@@ -22,7 +22,8 @@ import { useView } from '../view';
 
 const R = ru.clients;
 
-export const dueDot = (it: CorrItem | UpdItem) => (it.state === 'late' ? 'dot--alert' : it.state === 'soon' ? 'dot--muted' : '');
+export const dueDot = (it: CorrItem | UpdItem) =>
+  it.state === 'late' ? 'dot--alert' : it.state === 'soon' ? 'dot--muted' : '';
 
 export function dueState(it: CorrItem | UpdItem, today: string): string {
   if (it.kind === 'corr') {
@@ -96,7 +97,7 @@ function ActionRow({ x, view }: { x: ViewItem; view: 'corr' | 'upd' | 'bday' | '
   const it = x.it!;
   const reminded = remindedAt(c, it.key);
   let sub: string;
-  let sub2: ReactNode = null;
+  let sub2: ReactNode;
   let btn = R.write;
   if (view === 'corr' || view === 'upd') {
     const d = it as CorrItem | UpdItem;
@@ -126,7 +127,11 @@ function ActionRow({ x, view }: { x: ViewItem; view: 'corr' | 'upd' | 'bday' | '
           {sub2 && <div className="row-sub2">{sub2}</div>}
         </div>
       </button>
-      <button type="button" className="btn btn-secondary btn-sm row-act" onClick={() => openMessage(c.id, it.kind, it.key)}>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm row-act"
+        onClick={() => openMessage(c.id, it.kind, it.key)}
+      >
         {btn}
       </button>
     </div>
@@ -189,7 +194,11 @@ function ClientList() {
   const pickSort = async () => {
     const v = await actionSheet(
       R.sortTitle,
-      (Object.keys(R.sort) as (keyof typeof R.sort)[]).map((value) => ({ value, label: R.sort[value], on: clientSort === value })),
+      (Object.keys(R.sort) as (keyof typeof R.sort)[]).map((value) => ({
+        value,
+        label: R.sort[value],
+        on: clientSort === value,
+      })),
     );
     if (v) set({ clientSort: v });
   };
@@ -229,14 +238,21 @@ export function Clients() {
   const idx = useData((s) => s.idx);
   const { clientView, clientSearch, set } = useView();
   const corrItems = viewItems(idx, 'corr');
-  const hasLate = corrItems.some((x) => (x.it as CorrItem).state === 'late' && !recentlyReminded(x.c, x.it!.key, idx.today));
+  const hasLate = corrItems.some(
+    (x) => (x.it as CorrItem).state === 'late' && !recentlyReminded(x.c, x.it!.key, idx.today),
+  );
   return (
     <div className="screen">
       <header className="topbar">
         <div className="topbar-row">
           <h1 className="display title-lg">{R.title}</h1>
         </div>
-        <SearchBox value={clientSearch} onChange={(v) => set({ clientSearch: v })} placeholder={R.search} label={R.searchLabel} />
+        <SearchBox
+          value={clientSearch}
+          onChange={(v) => set({ clientSearch: v })}
+          placeholder={R.search}
+          label={R.searchLabel}
+        />
         <ScrollChips label={R.viewsLabel}>
           {CLIENT_VIEWS.map((v) => {
             const n = v === 'all' ? 0 : viewItems(idx, v).length;

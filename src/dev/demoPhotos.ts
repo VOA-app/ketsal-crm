@@ -59,7 +59,8 @@ function demoPhotoSVG(kind: string, stage: string, v: number): string {
     ];
     const col = sets[v % 4][k];
     const op = [0.62, 0.86, 0.96][k];
-    const upper = 'M110 152C140 128 172 118 190 130C196 134 204 134 210 130C228 118 260 128 290 152C250 158 150 158 110 152Z';
+    const upper =
+      'M110 152C140 128 172 118 190 130C196 134 204 134 210 130C228 118 260 128 290 152C250 158 150 158 110 152Z';
     const lower = 'M110 152C150 160 250 160 290 152C268 192 232 206 200 206C168 206 132 192 110 152Z';
     body =
       `<path d="${upper}" fill="${col}" fill-opacity="${op}"/><path d="${lower}" fill="${col}" fill-opacity="${op}"/>` +
@@ -110,7 +111,8 @@ function demoPhotoSVG(kind: string, stage: string, v: number): string {
   } else if (kind === 'doc') {
     let lines = '';
     const widths = [120, 112, 118, 96, 120, 104, 116, 88, 110];
-    for (let i = 0; i < 9; i += 1) lines += `<rect x="140" y="${70 + i * 14}" width="${widths[i]}" height="4" rx="2" fill="#6E7674" fill-opacity=".4"/>`;
+    for (let i = 0; i < 9; i += 1)
+      lines += `<rect x="140" y="${70 + i * 14}" width="${widths[i]}" height="4" rx="2" fill="#6E7674" fill-opacity=".4"/>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="${v % 2 ? '#E7F0EE' : '#EFEAE3'}"/><rect x="120" y="22" width="160" height="256" rx="4" fill="#fff" stroke="#DFE4E2"/><rect x="140" y="44" width="92" height="7" rx="3" fill="#2B2223" fill-opacity=".75"/>${lines}<path d="M150 242c10-18 18 8 26-4s14-16 20 2 10 6 22-8" stroke="#284C8C" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="214" y="246" width="46" height="3" rx="1.5" fill="#6E7674" fill-opacity=".4"/></svg>`;
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><defs><radialGradient id="g" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></radialGradient></defs><rect width="400" height="300" fill="url(#g)"/>${body}</svg>`;

@@ -66,7 +66,12 @@ export function Journal() {
         <div className="topbar-row">
           <h1 className="display title-lg">{J.title}</h1>
         </div>
-        <SearchBox value={procSearch} onChange={(v) => set({ procSearch: v })} placeholder={J.search} label={J.searchLabel} />
+        <SearchBox
+          value={procSearch}
+          onChange={(v) => set({ procSearch: v })}
+          placeholder={J.search}
+          label={J.searchLabel}
+        />
         <ScrollChips label={J.period}>
           {PERIODS.map((p) => (
             <Chip
@@ -103,7 +108,14 @@ export function Journal() {
             <div key={g.date}>
               <div className="section-title">
                 <span>{dayHeader(g.date, idx.today)}</span>
-                <span className="num">{fmtMoney(sum(g.items.filter((p) => p.status === 'done'), procTotal))}</span>
+                <span className="num">
+                  {fmtMoney(
+                    sum(
+                      g.items.filter((p) => p.status === 'done'),
+                      procTotal,
+                    ),
+                  )}
+                </span>
               </div>
               <div className="list">
                 {g.items.map((p) => (

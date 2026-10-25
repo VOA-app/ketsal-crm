@@ -151,7 +151,15 @@ export function Settings() {
       courses: cur.courses,
       lists: cur.lists,
     });
-    const keep: Partial<SettingsT> = { templates: cur.settings.templates, theme: cur.settings.theme, corrFrom: cur.settings.corrFrom, corrTo: cur.settings.corrTo, updFrom: cur.settings.updFrom, updTo: cur.settings.updTo, lostAfter: cur.settings.lostAfter };
+    const keep: Partial<SettingsT> = {
+      templates: cur.settings.templates,
+      theme: cur.settings.theme,
+      corrFrom: cur.settings.corrFrom,
+      corrTo: cur.settings.corrTo,
+      updFrom: cur.settings.updFrom,
+      updTo: cur.settings.updTo,
+      lostAfter: cur.settings.lostAfter,
+    };
     next.settings = { ...next.settings, ...keep };
     await clearBlobs();
     await useData.getState().replace(next);

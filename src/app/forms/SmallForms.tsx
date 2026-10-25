@@ -42,7 +42,12 @@ function HealingForm({ procId }: { procId: string }) {
           ))}
         </Chips>
         <Field label={ru.procForm.healingComment}>
-          <textarea className="textarea" value={note} placeholder={ru.procForm.healingPlaceholder} onChange={(e) => setNote(e.target.value)} />
+          <textarea
+            className="textarea"
+            value={note}
+            placeholder={ru.procForm.healingPlaceholder}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </Field>
         {status === 'reaction' && <p className="hint">{ru.healing.reactionHint}</p>}
       </SheetBody>
@@ -77,7 +82,13 @@ function ClientPicker({ onPick }: { onPick: (clientId: string) => void }) {
     <>
       <SheetHead title={ru.picker.title} />
       <SheetBody className="pt-12">
-        <SearchBox value={q} onChange={setQ} placeholder={ru.clients.search} label={ru.picker.search} className="mb-12" />
+        <SearchBox
+          value={q}
+          onChange={setQ}
+          placeholder={ru.clients.search}
+          label={ru.picker.search}
+          className="mb-12"
+        />
         <button
           type="button"
           className="btn btn-secondary btn-block mb-6"

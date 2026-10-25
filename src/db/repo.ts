@@ -24,7 +24,11 @@ export async function loadData(today: string): Promise<Data | null> {
   const settings = catalog.find((x) => x.key === 'settings')?.value as Partial<Settings> | undefined;
   const lists = catalog.find((x) => x.key === 'lists')?.value as Partial<Lists> | undefined;
   // Недостающие поля берём из значений по умолчанию: так переживаем добавление новых настроек
-  data.settings = { ...defaultSettings(), ...settings, templates: { ...defaultSettings().templates, ...settings?.templates } };
+  data.settings = {
+    ...defaultSettings(),
+    ...settings,
+    templates: { ...defaultSettings().templates, ...settings?.templates },
+  };
   data.lists = { ...defaultLists(), ...lists };
   return data;
 }

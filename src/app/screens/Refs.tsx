@@ -20,15 +20,37 @@ export function usageCount(data: Data, kind: RefKind, id: string): number {
   if (kind === 'services') return ps.filter((p) => p.serviceId === id).length;
   if (kind === 'pigments') return ps.filter((p) => p.pigments.some((g) => g.pigmentId === id)).length;
   if (kind === 'needles') return ps.filter((p) => p.needles.includes(id)).length;
-  if (kind === 'anesthetics') return ps.filter((p) => p.anesthesia.primary === id || p.anesthesia.secondary === id).length;
-  if (kind === 'zones') return ps.filter((p) => p.zone === id).length + data.services.filter((s) => s.zones.includes(id)).length;
+  if (kind === 'anesthetics')
+    return ps.filter((p) => p.anesthesia.primary === id || p.anesthesia.secondary === id).length;
+  if (kind === 'zones')
+    return ps.filter((p) => p.zone === id).length + data.services.filter((s) => s.zones.includes(id)).length;
   if (kind === 'courses') return ps.filter((p) => p.model?.courseId === id).length;
   return 0;
 }
 
-function RefRow({ kind, x, title, sub, sub2, side, lead }: { kind: RefKind; x: Entity<{ active?: boolean }>; title: string; sub: string; sub2?: ReactNode; side?: ReactNode; lead?: ReactNode }) {
+function RefRow({
+  kind,
+  x,
+  title,
+  sub,
+  sub2,
+  side,
+  lead,
+}: {
+  kind: RefKind;
+  x: Entity<{ active?: boolean }>;
+  title: string;
+  sub: string;
+  sub2?: ReactNode;
+  side?: ReactNode;
+  lead?: ReactNode;
+}) {
   return (
-    <button type="button" className={`row ${x.active === false ? 'row--dim' : ''}`} onClick={() => openRefForm(kind, x.id)}>
+    <button
+      type="button"
+      className={`row ${x.active === false ? 'row--dim' : ''}`}
+      onClick={() => openRefForm(kind, x.id)}
+    >
       {lead}
       <div className="row-main">
         <div className="row-title">{title}</div>
@@ -152,7 +174,13 @@ function Anesthetics() {
       <Group title={title}>
         {items.length ? (
           items.map((a) => (
-            <RefRow key={a.id} kind="anesthetics" x={a} title={a.name} sub={`${F.substance(a.substances.join(', ') || ru.common.none)}${a.active ? '' : F.archived}`} />
+            <RefRow
+              key={a.id}
+              kind="anesthetics"
+              x={a}
+              title={a.name}
+              sub={`${F.substance(a.substances.join(', ') || ru.common.none)}${a.active ? '' : F.archived}`}
+            />
           ))
         ) : (
           <div className="row">
@@ -182,7 +210,13 @@ function Zones() {
         return (
           <Group key={g} title={ZONE_GROUP[g]}>
             {items.map((z) => (
-              <RefRow key={z.id} kind="zones" x={z} title={z.name} sub={`${z.techniques.join(', ') || F.noTechniques}${z.update ? F.remindUpdate : ''}`} />
+              <RefRow
+                key={z.id}
+                kind="zones"
+                x={z}
+                title={z.name}
+                sub={`${z.techniques.join(', ') || F.noTechniques}${z.update ? F.remindUpdate : ''}`}
+              />
             ))}
           </Group>
         );
@@ -218,7 +252,14 @@ export function Refs() {
   const navigate = useNavigate();
   const { refsKind, set } = useView();
   const kind = (KINDS as string[]).includes(params.kind ?? '') ? (params.kind as RefKind) : refsKind;
-  const body = { services: Services, pigments: Pigments, needles: Needles, anesthetics: Anesthetics, zones: Zones, courses: Courses }[kind];
+  const body = {
+    services: Services,
+    pigments: Pigments,
+    needles: Needles,
+    anesthetics: Anesthetics,
+    zones: Zones,
+    courses: Courses,
+  }[kind];
   const Body = body;
   return (
     <div className="screen">

@@ -1,0 +1,300 @@
+/* Дополнения к стилям прототипа для React-версии: служебные отступы и классы,
+   которые в прототипе были инлайн-стилями (CSP запрещает атрибут style в разметке). */
+
+/* ── Отступы и текст ── */
+.mt-0 {
+  margin-top: 0 !important;
+}
+.mt-2 {
+  margin-top: 2px;
+}
+.mt-4 {
+  margin-top: 4px;
+}
+.mt-6 {
+  margin-top: 6px;
+}
+.mt-8 {
+  margin-top: 8px;
+}
+.mt-10 {
+  margin-top: 10px;
+}
+.mt-12 {
+  margin-top: 12px;
+}
+.mt-14 {
+  margin-top: 14px;
+}
+.mt-18 {
+  margin-top: 18px;
+}
+.mt-n4 {
+  margin-top: -4px;
+}
+.mb-0 {
+  margin-bottom: 0 !important;
+}
+.mb-2 {
+  margin-bottom: 2px;
+}
+.mb-4 {
+  margin-bottom: 4px;
+}
+.mb-6 {
+  margin-bottom: 6px;
+}
+.mb-8 {
+  margin-bottom: 8px;
+}
+.mb-10 {
+  margin-bottom: 10px;
+}
+.mb-12 {
+  margin-bottom: 12px;
+}
+.mb-14 {
+  margin-bottom: 14px;
+}
+.mb-16 {
+  margin-bottom: 16px;
+}
+.mx-2 {
+  margin-left: 2px;
+  margin-right: 2px;
+}
+.mx-4 {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+.py-3 {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.pt-12 {
+  padding-top: 12px;
+}
+.pb-14 {
+  padding-bottom: 14px;
+}
+.fs-12 {
+  font-size: 12px;
+}
+.fs-13 {
+  font-size: 13px;
+}
+.fs-14 {
+  font-size: 14px;
+}
+.fs-15 {
+  font-size: 15px;
+}
+.fw-400 {
+  font-weight: 400;
+}
+.fw-500 {
+  font-weight: 500;
+}
+.fw-600 {
+  font-weight: 600;
+}
+.block {
+  display: block;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.text-left {
+  text-align: left !important;
+}
+.pre-line {
+  white-space: pre-line;
+}
+.pre-wrap {
+  white-space: pre-wrap;
+}
+.spacer-44 {
+  width: 44px;
+  flex: none;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.row-between.baseline {
+  align-items: baseline;
+}
+.row-gap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sum-big {
+  font-size: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Кнопки и списки ── */
+.btn-strong {
+  font-weight: 600;
+}
+.btn-icon {
+  flex: 0 0 auto !important;
+  padding: 0 12px;
+}
+.btn-link--inline {
+  min-height: 0;
+}
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.action-list .action-cancel {
+  justify-content: center;
+  color: var(--text-2);
+}
+.quick .quick-btn {
+  width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-text);
+  padding: 10px 0 8px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-c);
+  text-decoration: none;
+}
+.quick .quick-btn:active {
+  background: var(--accent-soft);
+}
+.my-chips {
+  margin: 6px 0 4px;
+}
+.my-summary {
+  margin: 6px 0 4px;
+}
+.my-client {
+  margin: 4px 0 16px;
+}
+.card--tight {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.kv--block {
+  display: block;
+}
+.kv--block > .k {
+  display: block;
+  margin-bottom: 4px;
+}
+.marks {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 15px;
+}
+.proc-h1 {
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 400;
+}
+.pg-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+}
+
+/* ── Формы ── */
+.form-card--checks {
+  padding: 2px 14px;
+}
+.check--plain {
+  border: 0;
+}
+.color-input {
+  width: 56px;
+  height: 48px;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+.msg-text {
+  min-height: 150px;
+}
+.pg-top .select-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Фото ── */
+.thumb-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ph-blank {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.thumb .ph-blank {
+  height: 100%;
+  aspect-ratio: auto;
+}
+.avatar .ph-blank {
+  border-radius: 50%;
+  height: 100%;
+}
+
+/* ── Диаграмма ── */
+.chart .col {
+  pointer-events: none;
+}
+.chart .col--sel {
+  fill: var(--bar);
+}
+.chart .col--muted {
+  fill: var(--bar-muted);
+}
+
+/* Карточка напоминания: «Повторить» и иконка «Написать» в одну строку даже на узком экране */
+.rem-actions {
+  flex-wrap: nowrap;
+}
+.rem-actions .btn:first-child {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Подсказка диаграммы — поверх столбцов; отметка столбца — сама подсказка */
+.chart {
+  position: relative;
+}
+.chart-tip {
+  top: 6px;
+  left: 4px;
+}
+.chart .hit:focus {
+  outline: none;
+}
+.scroller {
+  overflow-x: hidden;
+}
+
+/* Строки горизонтальных столбцов: длинное название обрезается, цифры не переносятся */
+.hbars > .hbar {
+  min-width: 0;
+}
+.hbar-top .num {
+  flex: none;
+}

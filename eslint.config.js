@@ -24,6 +24,11 @@ export default tseslint.config(
       ],
     },
   },
+  // Формы, экраны и общие компоненты экспортируют и функции: горячая перезагрузка там не важна
+  {
+    files: ['src/app/forms/**/*.tsx', 'src/app/screens/**/*.tsx', 'src/app/components/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
   { files: ['src/sync/**/*Adapter*.ts', 'src/auth/**/*.ts'], rules: { 'no-restricted-globals': 'off' } },
   { files: ['src/crypto/**/*.ts'], rules: { 'no-restricted-properties': 'off' } },
   { files: ['*.config.ts', 'tests/**/*.ts'], languageOptions: { globals: globals.node } },

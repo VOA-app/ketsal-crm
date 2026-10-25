@@ -24,9 +24,19 @@ type Draft = Record<string, unknown> & { id: string; createdAt: string };
 
 function blank(kind: RefKind): Draft {
   const base = { id: ulid(), createdAt: todayISO() };
-  if (kind === 'services') return { ...base, name: '', zones: [], type: 'primary', technique: '', price: 0, duration: 120, active: true };
+  if (kind === 'services')
+    return { ...base, name: '', zones: [], type: 'primary', technique: '', price: 0, duration: 120, active: true };
   if (kind === 'pigments')
-    return { ...base, brand: '', name: '', kind: 'Органический', zones: [], hex: '#8C6A55', lots: [{ no: '', exp: addMonths(todayISO(), 12) }], active: true };
+    return {
+      ...base,
+      brand: '',
+      name: '',
+      kind: 'Органический',
+      zones: [],
+      hex: '#8C6A55',
+      lots: [{ no: '', exp: addMonths(todayISO(), 12) }],
+      active: true,
+    };
   if (kind === 'needles') return { ...base, name: '', note: '', active: true };
   if (kind === 'anesthetics') return { ...base, name: '', stage: 'primary', substances: [], active: true };
   if (kind === 'zones') return { ...base, name: '', group: 'pmu', techniques: [], update: true };
@@ -63,10 +73,18 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
       ))}
     </Chips>
   );
-  const activeSwitch = 'active' in d && <SwitchRow title={F.active} sub={F.activeSub} checked={!!d.active} onChange={(v) => up({ active: v })} />;
+  const activeSwitch = 'active' in d && (
+    <SwitchRow title={F.active} sub={F.activeSub} checked={!!d.active} onChange={(v) => up({ active: v })} />
+  );
   const nameInput = (placeholder?: string) => (
     <Field label={kind === 'needles' ? F.needleName : kind === 'pigments' ? F.color : F.name} err={errors.name}>
-      <input className="input" value={str('name')} onChange={(e) => up({ name: e.target.value })} placeholder={placeholder} autoComplete="off" />
+      <input
+        className="input"
+        value={str('name')}
+        onChange={(e) => up({ name: e.target.value })}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
     </Field>
   );
 
@@ -120,13 +138,24 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
         <div className="grid-2">
           <Field label={F.price}>
             <div className="affix">
-              <input className="input" inputMode="numeric" value={d.price ? String(d.price) : ''} placeholder="0" onChange={(e) => up({ price: parseMoney(e.target.value) })} />
+              <input
+                className="input"
+                inputMode="numeric"
+                value={d.price ? String(d.price) : ''}
+                placeholder="0"
+                onChange={(e) => up({ price: parseMoney(e.target.value) })}
+              />
               <span>₽</span>
             </div>
           </Field>
           <Field label={F.duration}>
             <div className="affix">
-              <input className="input" inputMode="numeric" value={d.duration ? String(d.duration) : ''} onChange={(e) => up({ duration: parseMoney(e.target.value) })} />
+              <input
+                className="input"
+                inputMode="numeric"
+                value={d.duration ? String(d.duration) : ''}
+                onChange={(e) => up({ duration: parseMoney(e.target.value) })}
+              />
               <span>{F.minUnit}</span>
             </div>
           </Field>
@@ -145,7 +174,12 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
           <Field label={F.defaultTech} opt={ru.common.optional} as="div">
             <Chips>
               {oneZone.techniques.map((t) => (
-                <Chip key={t} label={t} on={d.technique === t} onClick={() => up({ technique: d.technique === t ? '' : t })} />
+                <Chip
+                  key={t}
+                  label={t}
+                  on={d.technique === t}
+                  onClick={() => up({ technique: d.technique === t ? '' : t })}
+                />
               ))}
             </Chips>
           </Field>
@@ -159,7 +193,12 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
         <div className="form-card">
           <div className="grid-2">
             <Field label={F.brand} err={errors.brand}>
-              <input className="input" value={str('brand')} onChange={(e) => up({ brand: e.target.value })} autoComplete="off" />
+              <input
+                className="input"
+                value={str('brand')}
+                onChange={(e) => up({ brand: e.target.value })}
+                autoComplete="off"
+              />
             </Field>
             {nameInput()}
           </div>
@@ -175,7 +214,13 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
           </Field>
           <Field label={F.swatch} opt={F.swatchOpt} as="div">
             <div className="inline-actions">
-              <input type="color" className="color-input" value={str('hex')} onChange={(e) => up({ hex: e.target.value })} aria-label={F.swatch} />
+              <input
+                type="color"
+                className="color-input"
+                value={str('hex')}
+                onChange={(e) => up({ hex: e.target.value })}
+                aria-label={F.swatch}
+              />
               <span className="muted fs-14">{F.swatchHint}</span>
             </div>
           </Field>
@@ -193,7 +238,13 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
                 autoComplete="off"
                 onChange={(e) => up({ lots: lots.map((x, j) => (j === i ? { ...x, no: e.target.value } : x)) })}
               />
-              <input className="input" type="date" value={l.exp} aria-label={F.lotExp} onChange={(e) => up({ lots: lots.map((x, j) => (j === i ? { ...x, exp: e.target.value } : x)) })} />
+              <input
+                className="input"
+                type="date"
+                value={l.exp}
+                aria-label={F.lotExp}
+                onChange={(e) => up({ lots: lots.map((x, j) => (j === i ? { ...x, exp: e.target.value } : x)) })}
+              />
             </div>
             <div className="row-between mt-6">
               <span className="muted fs-13">
@@ -213,7 +264,11 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
             </div>
           </div>
         ))}
-        <button type="button" className="btn btn-outline btn-block" onClick={() => up({ lots: [{ no: '', exp: addMonths(todayISO(), 12) }, ...lots] })}>
+        <button
+          type="button"
+          className="btn btn-outline btn-block"
+          onClick={() => up({ lots: [{ no: '', exp: addMonths(todayISO(), 12) }, ...lots] })}
+        >
           <Icon name="plus" /> {F.addLot}
         </button>
         <p className="hint mt-10">{F.lotHint}</p>
@@ -224,7 +279,12 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
       <div className="form-card">
         {nameInput(F.needlePlaceholder)}
         <Field label={F.note} opt={ru.common.optional}>
-          <input className="input" value={str('note')} onChange={(e) => up({ note: e.target.value })} autoComplete="off" />
+          <input
+            className="input"
+            value={str('note')}
+            onChange={(e) => up({ note: e.target.value })}
+            autoComplete="off"
+          />
         </Field>
         {activeSwitch}
       </div>
@@ -240,7 +300,13 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
           </Chips>
         </Field>
         <Field label={F.substances} opt={F.substancesOpt}>
-          <input className="input" value={str('substancesText')} placeholder={F.substancesPlaceholder} onChange={(e) => up({ substancesText: e.target.value })} autoComplete="off" />
+          <input
+            className="input"
+            value={str('substancesText')}
+            placeholder={F.substancesPlaceholder}
+            onChange={(e) => up({ substancesText: e.target.value })}
+            autoComplete="off"
+          />
         </Field>
         {activeSwitch}
       </div>
@@ -258,9 +324,20 @@ function RefForm({ kind, id }: { kind: RefKind; id: string | null }) {
           </Chips>
         </Field>
         <Field label={F.techniques} opt={F.commaList}>
-          <input className="input" value={str('techniquesText')} placeholder={F.commaList} onChange={(e) => up({ techniquesText: e.target.value })} autoComplete="off" />
+          <input
+            className="input"
+            value={str('techniquesText')}
+            placeholder={F.commaList}
+            onChange={(e) => up({ techniquesText: e.target.value })}
+            autoComplete="off"
+          />
         </Field>
-        <SwitchRow title={F.remindUpdateSwitch} sub={F.remindUpdateSub(st.updFrom, st.updTo)} checked={!!d.update} onChange={(v) => up({ update: v })} />
+        <SwitchRow
+          title={F.remindUpdateSwitch}
+          sub={F.remindUpdateSub(st.updFrom, st.updTo)}
+          checked={!!d.update}
+          onChange={(v) => up({ update: v })}
+        />
       </div>
     );
   } else {

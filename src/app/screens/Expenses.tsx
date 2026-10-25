@@ -31,7 +31,16 @@ function ExpenseForm({ id }: { id: string | null }) {
   const src = id ? data.expenses.find((x) => x.id === id) : undefined;
   const sheet = useSheet();
   const [d, setD] = useState<Entity<Expense>>(() =>
-    src ? { ...src } : { id: ulid(), createdAt: todayISO(), category: data.lists.expenseCategories[0] || '', name: '', amount: 0, date: todayISO() },
+    src
+      ? { ...src }
+      : {
+          id: ulid(),
+          createdAt: todayISO(),
+          category: data.lists.expenseCategories[0] || '',
+          name: '',
+          amount: 0,
+          date: todayISO(),
+        },
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const up = (patch: Partial<Expense>) => setD((x) => ({ ...x, ...patch }));
@@ -68,17 +77,36 @@ function ExpenseForm({ id }: { id: string | null }) {
             </Chips>
           </Field>
           <Field label={E.desc} opt={ru.common.optional}>
-            <input className="input" value={d.name} onChange={(e) => up({ name: e.target.value })} placeholder={E.descPlaceholder} autoComplete="off" />
+            <input
+              className="input"
+              value={d.name}
+              onChange={(e) => up({ name: e.target.value })}
+              placeholder={E.descPlaceholder}
+              autoComplete="off"
+            />
           </Field>
           <div className="grid-2">
             <Field label={E.amount} err={errors.amount}>
               <div className="affix">
-                <input className="input" inputMode="numeric" value={d.amount ? String(d.amount) : ''} placeholder="0" autoComplete="off" onChange={(e) => up({ amount: parseMoney(e.target.value) })} />
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={d.amount ? String(d.amount) : ''}
+                  placeholder="0"
+                  autoComplete="off"
+                  onChange={(e) => up({ amount: parseMoney(e.target.value) })}
+                />
                 <span>₽</span>
               </div>
             </Field>
             <Field label={E.date} err={errors.date}>
-              <input className="input" type="date" value={d.date} max={todayISO()} onChange={(e) => up({ date: e.target.value })} />
+              <input
+                className="input"
+                type="date"
+                value={d.date}
+                max={todayISO()}
+                onChange={(e) => up({ date: e.target.value })}
+              />
             </Field>
           </div>
         </div>
@@ -105,7 +133,9 @@ export function Expenses() {
   const today = useData((s) => s.idx.today);
   const { expPeriod, set } = useView();
   const [a, b] = range(expPeriod, today);
-  const list = data.expenses.filter((e) => e.date >= a && e.date <= b).sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0));
+  const list = data.expenses
+    .filter((e) => e.date >= a && e.date <= b)
+    .sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0));
   const groups: { ym: string; items: Entity<Expense>[] }[] = [];
   for (const e of list) {
     const ym = e.date.slice(0, 7);
@@ -144,7 +174,9 @@ export function Expenses() {
                   <button type="button" className="row" key={e.id} onClick={() => openExpenseForm(e.id)}>
                     <div className="row-main">
                       <div className="row-title">{e.name || e.category}</div>
-                      <div className="row-sub">{[e.name ? e.category : '', fmtDate(e.date, true)].filter(Boolean).join(' · ')}</div>
+                      <div className="row-sub">
+                        {[e.name ? e.category : '', fmtDate(e.date, true)].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
                     <div className="row-side">
                       <span className="num fw-600">{fmtMoney(e.amount)}</span>

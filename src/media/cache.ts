@@ -32,7 +32,7 @@ export function photoUrl(id: string): Promise<string> {
   let p = pending.get(id);
   if (!p) {
     p = (async () => {
-      let url = '';
+      let url: string;
       if (id.startsWith('demo:')) {
         const { demoPhotoUri } = await import('../dev/demoPhotos');
         url = demoPhotoUri(id);

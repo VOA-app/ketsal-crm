@@ -81,7 +81,12 @@ function HealthForm({ clientId }: { clientId: string }) {
         <Chips className="mb-10">
           {h.allergies.length ? (
             h.allergies.map((a, i) => (
-              <Chip key={a} on ariaLabel={H.removeAllergy(a)} onClick={() => up({ allergies: h.allergies.filter((_, j) => j !== i) })}>
+              <Chip
+                key={a}
+                on
+                ariaLabel={H.removeAllergy(a)}
+                onClick={() => up({ allergies: h.allergies.filter((_, j) => j !== i) })}
+              >
                 {a} <Icon name="close" className="i-sm" />
               </Chip>
             ))
@@ -115,12 +120,29 @@ function HealthForm({ clientId }: { clientId: string }) {
           ))}
         </Chips>
         <div className="form-title">{H.meds}</div>
-        <textarea className="textarea" value={h.meds} onChange={(e) => up({ meds: e.target.value })} placeholder={H.medsPlaceholder} />
+        <textarea
+          className="textarea"
+          value={h.meds}
+          onChange={(e) => up({ meds: e.target.value })}
+          placeholder={H.medsPlaceholder}
+        />
         <div className="form-title">{H.other}</div>
-        <textarea className="textarea" value={h.other} onChange={(e) => up({ other: e.target.value })} placeholder={H.otherPlaceholder} />
+        <textarea
+          className="textarea"
+          value={h.other}
+          onChange={(e) => up({ other: e.target.value })}
+          placeholder={H.otherPlaceholder}
+        />
         <div className="form-title">{H.consent}</div>
         <div className="inline-actions">
-          <input className="input" type="date" value={consent} max={todayISO()} onChange={(e) => setConsent(e.target.value)} aria-label={H.consentDate} />
+          <input
+            className="input"
+            type="date"
+            value={consent}
+            max={todayISO()}
+            onChange={(e) => setConsent(e.target.value)}
+            aria-label={H.consentDate}
+          />
           <button type="button" className="btn btn-secondary" onClick={() => setConsent(todayISO())}>
             {ru.common.today}
           </button>

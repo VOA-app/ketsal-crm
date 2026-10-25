@@ -1,5 +1,5 @@
 // Отчёты за месяц или год: KPI, выручка по месяцам (диаграмма или таблица), разрезы.
-import { useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { addMonths, parseISO, startOfMonth } from '../../domain/dates';
 import { monthlySeries, NO_COURSE, prevCursor, reportData, type MonthPoint } from '../../domain/reports';
 import { cap } from '../../domain/text';
@@ -27,6 +27,15 @@ const monthName = (s: MonthPoint) => `${cap(MONTHS_NOM[s.month])} ${s.year}`;
 function ColumnChart({ series, selYm }: { series: MonthPoint[]; selYm: string | null }) {
   const [tip, setTip] = useState<{ i: number; left: number } | null>(null);
   const card = useRef<HTMLDivElement>(null);
+  const tipEl = useRef<HTMLDivElement>(null);
+  // Подсказка — над столбцом, но не шире карточки
+  useLayoutEffect(() => {
+    const el = tipEl.current;
+    const box = card.current;
+    if (!el || !box || !tip) return;
+    const w = el.offsetWidth;
+    el.style.left = `${Math.min(Math.max(4, tip.left - w / 2), box.clientWidth - w - 4)}px`;
+  }, [tip]);
   const W = 340;
   const H = 176;
   const L = 36;
@@ -98,7 +107,7 @@ function ColumnChart({ series, selYm }: { series: MonthPoint[]; selYm: string | 
         })}
       </svg>
       {tip && s && (
-        <div className="chart-tip show" style={{ left: Math.max(4, tip.left - 80) }}>
+        <div className="chart-tip show" ref={tipEl}>
           <b>{fmtMoney(s.revenue)}</b>
           {monthName(s)} · {R.tipCount(s.count)}
           <br />
@@ -195,10 +204,14 @@ export function Reports() {
   if (Pd.revenue > 0) {
     const pct = Math.round(((Rd.revenue - Pd.revenue) / Pd.revenue) * 100);
     const pctText = `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct)}${NBSP}%`;
-    delta = mode === 'month' ? R.toPrevMonth(pctText, MONTHS_DAT[parseISO(prevCur).getMonth()]) : R.toPrevYear(pctText, prevCur.slice(0, 4));
+    delta =
+      mode === 'month'
+        ? R.toPrevMonth(pctText, MONTHS_DAT[parseISO(prevCur).getMonth()])
+        : R.toPrevYear(pctText, prevCur.slice(0, 4));
   }
   const certPaid = Rd.byPayment.find((g) => g.key === 'cert');
-  const shift = (k: number) => set({ reportCursor: mode === 'month' ? addMonths(startOfMonth(cur), k) : addMonths(cur, 12 * k) });
+  const shift = (k: number) =>
+    set({ reportCursor: mode === 'month' ? addMonths(startOfMonth(cur), k) : addMonths(cur, 12 * k) });
   return (
     <div className="screen">
       <NavBar title={R.title} backTo="/more" />
@@ -270,11 +283,38 @@ export function Reports() {
             {reportTable ? R.showChart : R.showTable}
           </button>
         </div>
-        <div className="chart-card">{reportTable ? <SeriesTable series={series} /> : <ColumnChart series={series} selYm={mode === 'month' ? cur.slice(0, 7) : null} />}</div>
-        <HBars title={R.byExpense} rows={Rd.byExpense.map((g) => ({ label: g.key, value: g.value, text: money(g.value, g.count) }))} empty={R.noPurchases} />
-        <HBars title={R.byService} rows={Rd.byService.map((g) => ({ label: serviceName(idx, g.key), value: g.value, text: money(g.value, g.count) }))} />
-        <HBars title={R.byZone} rows={Rd.byZone.map((g) => ({ label: zoneName(idx, g.key), value: g.count, text: count(g.count, g.value) }))} />
-        <HBars title={R.byType} rows={Rd.byType.map((g) => ({ label: VISIT_TYPE[g.key as VisitType], value: g.count, text: count(g.count, g.value) }))} />
+        <div className="chart-card">
+          {reportTable ? (
+            <SeriesTable series={series} />
+          ) : (
+            <ColumnChart series={series} selYm={mode === 'month' ? cur.slice(0, 7) : null} />
+          )}
+        </div>
+        <HBars
+          title={R.byExpense}
+          rows={Rd.byExpense.map((g) => ({ label: g.key, value: g.value, text: money(g.value, g.count) }))}
+          empty={R.noPurchases}
+        />
+        <HBars
+          title={R.byService}
+          rows={Rd.byService.map((g) => ({
+            label: serviceName(idx, g.key),
+            value: g.value,
+            text: money(g.value, g.count),
+          }))}
+        />
+        <HBars
+          title={R.byZone}
+          rows={Rd.byZone.map((g) => ({ label: zoneName(idx, g.key), value: g.count, text: count(g.count, g.value) }))}
+        />
+        <HBars
+          title={R.byType}
+          rows={Rd.byType.map((g) => ({
+            label: VISIT_TYPE[g.key as VisitType],
+            value: g.count,
+            text: count(g.count, g.value),
+          }))}
+        />
         <HBars
           title={R.byPigment}
           rows={Rd.byPigment.slice(0, 8).map((g) => ({
@@ -287,9 +327,24 @@ export function Reports() {
             ),
           }))}
         />
-        <HBars title={R.byReason} rows={Rd.byReason.map((g) => ({ label: g.key || R.noReason, value: g.value, text: money(g.value, g.count) }))} empty={R.noDiscounts} />
-        <HBars title={R.bySource} rows={Rd.bySource.map((g) => ({ label: g.key || R.noSource, value: g.count, text: <b>{g.count}</b> }))} empty={R.noNew} />
-        <HBars title={R.byPayment} rows={Rd.byPayment.map((g) => ({ label: PAYMENT[g.key as Payment] || g.key, value: g.value, text: money(g.value, g.count) }))} />
+        <HBars
+          title={R.byReason}
+          rows={Rd.byReason.map((g) => ({ label: g.key || R.noReason, value: g.value, text: money(g.value, g.count) }))}
+          empty={R.noDiscounts}
+        />
+        <HBars
+          title={R.bySource}
+          rows={Rd.bySource.map((g) => ({ label: g.key || R.noSource, value: g.count, text: <b>{g.count}</b> }))}
+          empty={R.noNew}
+        />
+        <HBars
+          title={R.byPayment}
+          rows={Rd.byPayment.map((g) => ({
+            label: PAYMENT[g.key as Payment] || g.key,
+            value: g.value,
+            text: money(g.value, g.count),
+          }))}
+        />
         <HBars
           title={R.byCourse}
           rows={Rd.byCourse.map((g) => ({

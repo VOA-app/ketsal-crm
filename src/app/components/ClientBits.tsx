@@ -35,7 +35,11 @@ export function ProcItem({ p, withClient = false }: { p: Entity<Procedure>; with
   const pigments = p.pigments.filter((g) => g.pigmentId);
   const hasMats = !dim && (pigments.length > 0 || p.needles.length > 0);
   return (
-    <button type="button" className={`proc-item ${dim ? 'proc-item--dim' : ''}`} onClick={() => navigate(`/proc/${p.id}`)}>
+    <button
+      type="button"
+      className={`proc-item ${dim ? 'proc-item--dim' : ''}`}
+      onClick={() => navigate(`/proc/${p.id}`)}
+    >
       <div className="proc-main">
         <div className="proc-title">{title}</div>
         <div className="proc-meta">{meta}</div>

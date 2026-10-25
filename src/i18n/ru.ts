@@ -15,12 +15,51 @@ import type { ClientSort } from '../domain/reminders';
 import type { CertStatus } from '../domain/certificates';
 import { NBSP, pl, plural } from './plural';
 
-export const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-export const MONTHS_NOM = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+export const MONTHS_GEN = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+];
+export const MONTHS_NOM = [
+  'январь',
+  'февраль',
+  'март',
+  'апрель',
+  'май',
+  'июнь',
+  'июль',
+  'август',
+  'сентябрь',
+  'октябрь',
+  'ноябрь',
+  'декабрь',
+];
 export const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 export const MONTHS_AXIS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 /** Предложный падеж для «к …»: к январю, к маю */
-export const MONTHS_DAT = ['январю', 'февралю', 'марту', 'апрелю', 'маю', 'июню', 'июлю', 'августу', 'сентябрю', 'октябрю', 'ноябрю', 'декабрю'];
+export const MONTHS_DAT = [
+  'январю',
+  'февралю',
+  'марту',
+  'апрелю',
+  'маю',
+  'июню',
+  'июлю',
+  'августу',
+  'сентябрю',
+  'октябрю',
+  'ноябрю',
+  'декабрю',
+];
 export const WEEKDAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
 
 export const VISIT_TYPE: Record<VisitType, string> = {
@@ -31,7 +70,12 @@ export const VISIT_TYPE: Record<VisitType, string> = {
   removal: 'Удаление ремувером',
 };
 
-export const PAYMENT: Record<Payment, string> = { card: 'Карта', cash: 'Наличные', transfer: 'Перевод', cert: 'Сертификат' };
+export const PAYMENT: Record<Payment, string> = {
+  card: 'Карта',
+  cash: 'Наличные',
+  transfer: 'Перевод',
+  cert: 'Сертификат',
+};
 
 export const STATUS: Record<ProcStatus, string> = { done: 'Состоялась', noshow: 'Не пришла', cancel: 'Отменила' };
 
@@ -61,7 +105,13 @@ export const HEALTH_FLAG: Record<HealthFlag, string> = {
 
 export const ZONE_GROUP: Record<ZoneGroup, string> = { pmu: 'Перманент', camo: 'Камуфляж', other: 'Другое' };
 
-export const CONTACT: Record<ContactKind, string> = { vk: 'ВК', max: 'MAX', tg: 'Телеграм', wa: 'WhatsApp', phone: 'Только звонок' };
+export const CONTACT: Record<ContactKind, string> = {
+  vk: 'ВК',
+  max: 'MAX',
+  tg: 'Телеграм',
+  wa: 'WhatsApp',
+  phone: 'Только звонок',
+};
 
 export const PHOTO_STAGE: Record<PhotoStage, string> = { before: 'До', after: 'Сразу после', month: 'Через месяц' };
 
@@ -73,7 +123,11 @@ export const TEMPLATE: Record<TemplateId, string> = {
   free: 'Свой текст',
 };
 
-export const CERT_STATUS: Record<CertStatus, string> = { active: 'Действует', used: 'Использован', expired: 'Срок истёк' };
+export const CERT_STATUS: Record<CertStatus, string> = {
+  active: 'Действует',
+  used: 'Использован',
+  expired: 'Срок истёк',
+};
 
 export const ru = {
   appName: 'Кетсаль · учёт клиентов',
@@ -109,7 +163,11 @@ export const ru = {
   },
   tabs: { clients: 'Клиенты', procedures: 'Процедуры', refs: 'Справочники', more: 'Ещё', label: 'Разделы' },
   badge: (n: number) => `Напоминаний: ${n}`,
-  sync: { button: 'Синхронизация', local: 'Данные хранятся только на этом устройстве', later: 'Синхронизация с Яндекс Диском появится на этапе 3' },
+  sync: {
+    button: 'Синхронизация',
+    local: 'Данные хранятся только на этом устройстве',
+    later: 'Синхронизация с Яндекс Диском появится на этапе 3',
+  },
   clients: {
     title: 'Клиенты',
     search: 'Имя, телефон или № карты',
@@ -135,7 +193,8 @@ export const ru = {
     } as Record<ClientView, string>,
     hint: {
       corr: (from: number, to: number) => `Окно коррекции: с ${from} по ${to} день после первичной`,
-      upd: (from: number, lost: number) => `Прошло ${from}–${lost} ${plural(lost, 'месяц', 'месяца', 'месяцев')} с последней процедуры`,
+      upd: (from: number, lost: number) =>
+        `Прошло ${from}–${lost} ${plural(lost, 'месяц', 'месяца', 'месяцев')} с последней процедуры`,
       bday: 'Дни рождения в ближайшие 30 дней',
       models: 'Работали на моделях для обучения',
       lost: (m: number) => `Не были больше ${m} месяцев`,
@@ -298,7 +357,8 @@ export const ru = {
   healthForm: {
     title: 'Анкета здоровья',
     filled: (d: string) => `заполнена ${d}`,
-    notice: 'Это данные о здоровье. Для них нужно отдельное письменное согласие клиентки. В списках и таблицах они не показываются.',
+    notice:
+      'Это данные о здоровье. Для них нужно отдельное письменное согласие клиентки. В списках и таблицах они не показываются.',
     flags: 'Отметки',
     allergies: 'Аллергии',
     noAllergies: 'Не отмечены',
@@ -505,7 +565,14 @@ export const ru = {
   },
   refs: {
     title: 'Справочники',
-    kinds: { services: 'Услуги', pigments: 'Пигменты', needles: 'Иглы', anesthetics: 'Анестезия', zones: 'Зоны', courses: 'Курсы' },
+    kinds: {
+      services: 'Услуги',
+      pigments: 'Пигменты',
+      needles: 'Иглы',
+      anesthetics: 'Анестезия',
+      zones: 'Зоны',
+      courses: 'Курсы',
+    },
     add: 'Добавить',
     servicesNote: 'Цена услуги подставляется в процедуру сама, её можно изменить.',
     pigmentsNote:
@@ -581,7 +648,8 @@ export const ru = {
     remindUpdateSub: (a: number, b: number) => `Через ${a}–${b} месяцев после последней процедуры`,
     courseName: 'например, Пудровые брови · практика',
     courseStart: 'Дата начала',
-    used: (n: number) => `Используется: ${n}. Удалить нельзя, только убрать из выбора — история процедур не пострадает.`,
+    used: (n: number) =>
+      `Используется: ${n}. Удалить нельзя, только убрать из выбора — история процедур не пострадает.`,
     unused: 'Пока нигде не используется, можно удалить.',
     delTitle: 'Удалить из справочника?',
     noName: 'Без названия',
@@ -656,7 +724,7 @@ export const ru = {
   certs: {
     title: 'Сертификаты',
     filters: { active: 'Действуют', used: 'Использованы', expired: 'Срок истёк', all: 'Все' },
-    note: 'Сертификат отмечается использованным сам, когда в процедуре выбирают оплату сертификатом.',
+    listNote: 'Сертификат отмечается использованным сам, когда в процедуре выбирают оплату сертификатом.',
     sell: 'Продать сертификат',
     validTo: (d: string) => `действует до ${d}`,
     expiredAt: (d: string) => `срок истёк ${d}`,
@@ -738,7 +806,8 @@ export const ru = {
     demoResetDone: 'Демо-данные восстановлены',
     clear: 'Очистить всё и начать с № 1',
     clearTitle: 'Очистить всю базу?',
-    clearText: 'Удалятся все карты, процедуры, сертификаты и покупки. Справочники останутся. Первая новая карта получит № 1.',
+    clearText:
+      'Удалятся все карты, процедуры, сертификаты и покупки. Справочники останутся. Первая новая карта получит № 1.',
     clearOk: 'Очистить',
     clearWord: 'очистить',
     clearDone: 'База пустая. Первая карта получит № 1',

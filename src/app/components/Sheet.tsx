@@ -12,15 +12,15 @@ interface SheetCtx {
 const SheetContext = createContext<SheetCtx | null>(null);
 
 /** Текущая шторка: закрыть и задать, что делать при «Отмена» или нажатии на фон. */
-export function useSheet(onDismiss?: () => void): SheetCtx & { dismiss: () => void } {
+export function useSheet(onDismiss?: (close: () => void) => void): SheetCtx & { dismiss: () => void } {
   const ctx = useContext(SheetContext)!;
   useEffect(() => {
     if (!onDismiss) return;
-    sheetDismiss.set(ctx.id, onDismiss);
+    sheetDismiss.set(ctx.id, () => onDismiss(ctx.close));
     return () => {
       sheetDismiss.delete(ctx.id);
     };
-  }, [ctx.id, onDismiss]);
+  }, [ctx, onDismiss]);
   return { ...ctx, dismiss: () => dismissSheet(ctx.id) };
 }
 

@@ -67,11 +67,18 @@ function ReminderCard({ c, it }: { c: Entity<Client>; it: CorrItem | UpdItem }) 
         <button
           type="button"
           className="btn btn-primary btn-sm"
-          onClick={() => openProcForm({ clientId: c.id, draft: repeatDraft(useData.getState().idx, c.id, it.zone, idx.today) })}
+          onClick={() =>
+            openProcForm({ clientId: c.id, draft: repeatDraft(useData.getState().idx, c.id, it.zone, idx.today) })
+          }
         >
           <Icon name="repeat" /> {C.repeat}
         </button>
-        <button type="button" className="btn btn-outline btn-sm btn-icon" aria-label={C.writeReminder} onClick={() => openMessage(c.id, it.kind, it.key)}>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm btn-icon"
+          aria-label={C.writeReminder}
+          onClick={() => openMessage(c.id, it.kind, it.key)}
+        >
           <Icon name="message" />
         </button>
       </div>
@@ -83,16 +90,47 @@ function Alerts({ c, inf }: { c: Entity<Client>; inf: ClientInfo }) {
   const out: ReactNode[] = [];
   for (const it of [...inf.corr, ...inf.upd]) out.push(<ReminderCard key={it.key} c={c} it={it} />);
   if (inf.bday && inf.bday.inDays <= 14) {
-    const when = inf.bday.inDays === 0 ? ru.clients.today : inf.bday.inDays === 1 ? ru.clients.tomorrow : fmtDate(inf.bday.date, false);
-    out.push(<Notice key="bday" icon="gift" text={C.bday(when, inf.bday.age)} btn={ru.clients.congratulate} onClick={() => openMessage(c.id, 'bday', inf.bday!.key)} />);
+    const when =
+      inf.bday.inDays === 0
+        ? ru.clients.today
+        : inf.bday.inDays === 1
+          ? ru.clients.tomorrow
+          : fmtDate(inf.bday.date, false);
+    out.push(
+      <Notice
+        key="bday"
+        icon="gift"
+        text={C.bday(when, inf.bday.age)}
+        btn={ru.clients.congratulate}
+        onClick={() => openMessage(c.id, 'bday', inf.bday!.key)}
+      />,
+    );
   }
   const missing = [
     inf.consentMissing && C.noConsentPd,
     inf.procConsentMissing && inf.procs.length > 0 && C.noConsentProc,
     inf.healthConsentMissing && C.noConsentHealth,
   ].filter((x): x is string => !!x);
-  if (missing.length) out.push(<Notice key="cons" icon="doc" text={C.noConsent(missing)} btn={ru.common.add} onClick={() => openConsentsForm(c.id)} />);
-  if (inf.healthMissing) out.push(<Notice key="health" icon="health" text={C.healthMissing} btn={ru.common.fill} onClick={() => openHealthForm(c.id)} />);
+  if (missing.length)
+    out.push(
+      <Notice
+        key="cons"
+        icon="doc"
+        text={C.noConsent(missing)}
+        btn={ru.common.add}
+        onClick={() => openConsentsForm(c.id)}
+      />,
+    );
+  if (inf.healthMissing)
+    out.push(
+      <Notice
+        key="health"
+        icon="health"
+        text={C.healthMissing}
+        btn={ru.common.fill}
+        onClick={() => openHealthForm(c.id)}
+      />,
+    );
   return out.length ? <div className="alerts">{out}</div> : null;
 }
 
@@ -104,7 +142,10 @@ interface ZonePhoto {
 
 function zonePhotos(procs: Entity<Procedure>[], zone: string): ZonePhoto[] {
   const out: ZonePhoto[] = [];
-  for (const p of procs.filter((x) => x.zone === zone).slice().reverse()) {
+  for (const p of procs
+    .filter((x) => x.zone === zone)
+    .slice()
+    .reverse()) {
     for (const st of PHOTO_STAGES) for (const photo of p.photos?.[st] || []) out.push({ photo, p, stage: st });
   }
   return out;
@@ -137,7 +178,8 @@ function Photos({ c }: { c: Entity<Client> }) {
     let a: ZonePhoto | undefined;
     let b: ZonePhoto | undefined;
     if (withMonth) {
-      a = items.find((x) => x.p.id === withMonth.p.id && x.stage === 'before') || items.find((x) => x.stage === 'before');
+      a =
+        items.find((x) => x.p.id === withMonth.p.id && x.stage === 'before') || items.find((x) => x.stage === 'before');
       b = withMonth;
     } else {
       a = items.find((x) => x.stage === 'before');
@@ -158,7 +200,12 @@ function Photos({ c }: { c: Entity<Client> }) {
     <>
       <Chips className="mb-12">
         {zones.map((z) => (
-          <Chip key={z} label={zoneName(idx, z)} on={z === zone} onClick={() => set({ photoZone: { ...photoZone, [c.id]: z } })} />
+          <Chip
+            key={z}
+            label={zoneName(idx, z)}
+            on={z === zone}
+            onClick={() => set({ photoZone: { ...photoZone, [c.id]: z } })}
+          />
         ))}
       </Chips>
       <button type="button" className="btn btn-secondary btn-sm mb-16" onClick={compare}>
@@ -172,7 +219,12 @@ function Photos({ c }: { c: Entity<Client> }) {
           </div>
           <div className="photo-grid">
             {g.items.map((x) => (
-              <button type="button" className="ph" key={x.photo.blobId} onClick={() => ui().openViewer(items.map(toViewer), x.i)}>
+              <button
+                type="button"
+                className="ph"
+                key={x.photo.blobId}
+                onClick={() => ui().openViewer(items.map(toViewer), x.i)}
+              >
                 <PhotoImg photo={x.photo} alt={`${PHOTO_STAGE[x.stage]}, ${fmtDate(x.p.date, true)}`} />
                 <div className="ph-cap">
                   <b>{PHOTO_STAGE[x.stage]}</b>
@@ -186,7 +238,17 @@ function Photos({ c }: { c: Entity<Client> }) {
   );
 }
 
-function ConsentRow({ label, date, photos, notNeeded }: { label: string; date?: string; photos?: PhotoRef[]; notNeeded?: boolean }) {
+function ConsentRow({
+  label,
+  date,
+  photos,
+  notNeeded,
+}: {
+  label: string;
+  date?: string;
+  photos?: PhotoRef[];
+  notNeeded?: boolean;
+}) {
   let v: ReactNode;
   if (date) {
     v = (
@@ -198,7 +260,15 @@ function ConsentRow({ label, date, photos, notNeeded }: { label: string; date?: 
             <button
               type="button"
               className="btn-link btn-link--inline"
-              onClick={() => ui().openViewer(photos.map((photo, i) => ({ photo, title: label, sub: photos.length > 1 ? ru.photo.of(i + 1, photos.length) : '' })))}
+              onClick={() =>
+                ui().openViewer(
+                  photos.map((photo, i) => ({
+                    photo,
+                    title: label,
+                    sub: photos.length > 1 ? ru.photo.of(i + 1, photos.length) : '',
+                  })),
+                )
+              }
             >
               {C.form}
             </button>
@@ -251,7 +321,10 @@ function HealthBlock({ c }: { c: Entity<Client> }) {
 
 function DataTab({ c, inf, onPurge }: { c: Entity<Client>; inf: ClientInfo; onPurge: () => void }) {
   const today = useData((s) => s.idx.today);
-  const ct = c.contact && c.contact.kind !== 'phone' ? `${CONTACT[c.contact.kind]}${c.contact.handle ? `: ${c.contact.handle}` : ''}` : C.onlyCall;
+  const ct =
+    c.contact && c.contact.kind !== 'phone'
+      ? `${CONTACT[c.contact.kind]}${c.contact.handle ? `: ${c.contact.handle}` : ''}`
+      : C.onlyCall;
   const cons = c.consents;
   return (
     <>
@@ -326,7 +399,12 @@ export function ClientCard() {
 
   const purge = async () => {
     const n = procsOf(idx, c.id).length;
-    const ok = await ui().confirm({ title: C.purgeTitle, text: C.purgeText(c.cardNo, n), ok: C.purgeOk, requireWord: C.purgeWord });
+    const ok = await ui().confirm({
+      title: C.purgeTitle,
+      text: C.purgeText(c.cardNo, n),
+      ok: C.purgeOk,
+      requireWord: C.purgeWord,
+    });
     if (!ok) return;
     const procs = procsOf(useData.getState().idx, c.id);
     useData.getState().apply((tx) => {
@@ -334,7 +412,8 @@ export function ClientCard() {
       const blobIds = allBlobIds({ ...tx.data, clients: [c], procedures: procs });
       for (const p of procs) {
         tx.del('procedures', p.id);
-        for (const cert of tx.data.certificates) if (cert.usedProcId === p.id) tx.put('certificates', { ...cert, usedProcId: 'deleted' });
+        for (const cert of tx.data.certificates)
+          if (cert.usedProcId === p.id) tx.put('certificates', { ...cert, usedProcId: 'deleted' });
       }
       tx.del('clients', c.id);
       tx.dropBlobs(blobIds);
@@ -449,4 +528,3 @@ export function ClientCard() {
     </div>
   );
 }
-

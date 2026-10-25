@@ -63,7 +63,8 @@ export function dayHeader(iso: string, today: string): string {
 
 /** 12 тыс, 1,2 млн — подписи осей. */
 export function fmtMoneyShort(n: number): string {
-  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1).replace('.', ',').replace(',0', '')}${NBSP}${ru.reports.million}`;
+  if (Math.abs(n) >= 1e6)
+    return `${(n / 1e6).toFixed(1).replace('.', ',').replace(',0', '')}${NBSP}${ru.reports.million}`;
   if (Math.abs(n) >= 1e3) return `${Math.round(n / 1e3)}${NBSP}${ru.reports.thousand}`;
   return fmtNum(n);
 }

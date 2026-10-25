@@ -15,9 +15,9 @@ function ConsentsForm({ clientId }: { clientId: string }) {
   const c = useData((s) => s.idx.client.get(clientId));
   const photos = usePhotoDraft();
   const [cons, setCons] = useState<Consents>(() => normalizeConsents(c?.consents));
-  const sheet = useSheet(() => {
+  const sheet = useSheet((close) => {
     photos.discard();
-    sheet.close();
+    close();
   });
   if (!c) return null;
   const set = (k: keyof Consents, patch: object) => setCons((x) => ({ ...x, [k]: { ...x[k], ...patch } }));

@@ -16,7 +16,17 @@ import { Kv, NavBar, Swatch } from '../components/kit';
 import { PhotoAdd, Thumb } from '../components/Photo';
 import { openProcForm } from '../forms/ProcForm';
 import { openHealingForm } from '../forms/SmallForms';
-import { anestName, certPayText, courseName, needleName, pigmentFull, procDiscount, procTotal, serviceName, zoneName } from '../names';
+import {
+  anestName,
+  certPayText,
+  courseName,
+  needleName,
+  pigmentFull,
+  procDiscount,
+  procTotal,
+  serviceName,
+  zoneName,
+} from '../names';
 import { allBlobIds, useData } from '../store';
 import { ui, type ViewerItem } from '../ui';
 import { pickFiles, savePhotos } from '../../media/cache';
@@ -47,7 +57,11 @@ export function ProcedureView() {
     for (const st of PHOTO_STAGES) {
       (p.photos?.[st] || []).forEach((photo, j) => {
         if (st === stage && j === i) start = items.length;
-        items.push({ photo, title: PHOTO_STAGE[st], sub: `${fmtDate(p.date, true)} · ${serviceName(idx, p.serviceId)}` });
+        items.push({
+          photo,
+          title: PHOTO_STAGE[st],
+          sub: `${fmtDate(p.date, true)} · ${serviceName(idx, p.serviceId)}`,
+        });
       });
     }
     ui().openViewer(items, start);
@@ -61,12 +75,19 @@ export function ProcedureView() {
     if (!refs.length) return;
     const cur = useData.getState().idx.proc.get(p.id);
     if (!cur) return;
-    useData.getState().apply((tx) => tx.put('procedures', { ...cur, photos: { ...cur.photos, [stage]: [...(cur.photos[stage] || []), ...refs] } }));
+    useData
+      .getState()
+      .apply((tx) =>
+        tx.put('procedures', { ...cur, photos: { ...cur.photos, [stage]: [...(cur.photos[stage] || []), ...refs] } }),
+      );
     ui().toast(refs.length > 1 ? V.photosAdded(refs.length) : V.photoAdded(lc(PHOTO_STAGE[stage])));
   };
 
   const del = async () => {
-    const ok = await ui().confirm({ title: V.deleteTitle, text: V.deleteText(serviceName(idx, p.serviceId), fmtDate(p.date, true)) });
+    const ok = await ui().confirm({
+      title: V.deleteTitle,
+      text: V.deleteText(serviceName(idx, p.serviceId), fmtDate(p.date, true)),
+    });
     if (!ok) return;
     const snapshot: Entity<Procedure> = structuredClone(p);
     const certsBefore = idx.data.certificates.filter((x) => x.usedProcId === p.id);
@@ -106,7 +127,12 @@ export function ProcedureView() {
         title={V.title}
         backTo={`/client/${p.clientId}`}
         right={
-          <button type="button" className="icon-btn icon-btn--accent" aria-label={V.edit} onClick={() => openProcForm({ procId: p.id })}>
+          <button
+            type="button"
+            className="icon-btn icon-btn--accent"
+            aria-label={V.edit}
+            onClick={() => openProcForm({ procId: p.id })}
+          >
             <Icon name="edit" />
           </button>
         }
@@ -125,7 +151,9 @@ export function ProcedureView() {
           </div>
         )}
         <h1 className="display proc-h1">{serviceName(idx, p.serviceId)}</h1>
-        <div className="profile-meta text-left mt-6">{[fmtDate(p.date, true), VISIT_TYPE[p.type], zoneName(idx, p.zone), p.technique].filter(Boolean).join(' · ')}</div>
+        <div className="profile-meta text-left mt-6">
+          {[fmtDate(p.date, true), VISIT_TYPE[p.type], zoneName(idx, p.zone), p.technique].filter(Boolean).join(' · ')}
+        </div>
         {(p.status !== 'done' || p.model?.on) && (
           <div className="chips mt-10">
             {p.status !== 'done' && (
@@ -164,7 +192,11 @@ export function ProcedureView() {
                     <div className="grow">
                       <div>{pigmentFull(idx, g.pigmentId)}</div>
                       <div className="muted fs-13">
-                        {V.lotLine(g.lot || ru.common.none, lot?.exp ? V.expTo(fmtMonthNum(lot.exp)) : '', g.ratio ? ` · ${g.ratio}` : '')}
+                        {V.lotLine(
+                          g.lot || ru.common.none,
+                          lot?.exp ? V.expTo(fmtMonthNum(lot.exp)) : '',
+                          g.ratio ? ` · ${g.ratio}` : '',
+                        )}
                       </div>
                     </div>
                   </div>
@@ -234,7 +266,13 @@ export function ProcedureView() {
         )}
 
         <div className="btn-stack mt-18">
-          <button type="button" className="btn btn-secondary" onClick={() => openProcForm({ clientId: p.clientId, draft: repeatDraft(idx, p.clientId, p.zone, idx.today, p.id) })}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              openProcForm({ clientId: p.clientId, draft: repeatDraft(idx, p.clientId, p.zone, idx.today, p.id) })
+            }
+          >
             <Icon name="repeat" /> {ru.card.repeat}
           </button>
           <button type="button" className="btn btn-danger" onClick={del}>

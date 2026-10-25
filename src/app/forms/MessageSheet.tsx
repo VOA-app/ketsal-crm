@@ -141,7 +141,12 @@ function MessageSheet({ clientId, kind: kindIn, keyIn }: { clientId: string; kin
             />
           ))}
         </Chips>
-        <textarea className="textarea msg-text" value={text} onChange={(e) => setText(e.target.value)} aria-label={M.text} />
+        <textarea
+          className="textarea msg-text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          aria-label={M.text}
+        />
         {key && (
           <Check checked={mark} onChange={setMark} className="check--plain">
             {M.mark}

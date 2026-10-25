@@ -7,7 +7,7 @@ import { useUi, type ViewerItem } from '../ui';
 import { Icon } from './Icon';
 
 export function usePhotoUrl(id: string | undefined): string {
-  const [url, setUrl] = useState(() => (id ? cachedUrl(id) ?? '' : ''));
+  const [url, setUrl] = useState(() => (id ? (cachedUrl(id) ?? '') : ''));
   useEffect(() => {
     let alive = true;
     if (!id) return;
@@ -21,9 +21,23 @@ export function usePhotoUrl(id: string | undefined): string {
   return id ? url : '';
 }
 
-export function PhotoImg({ photo, full = false, alt = '', className }: { photo: PhotoRef; full?: boolean; alt?: string; className?: string }) {
+export function PhotoImg({
+  photo,
+  full = false,
+  alt = '',
+  className,
+}: {
+  photo: PhotoRef;
+  full?: boolean;
+  alt?: string;
+  className?: string;
+}) {
   const url = usePhotoUrl(full ? photo.blobId : photo.thumbId);
-  return url ? <img src={url} alt={alt} className={className} loading="lazy" draggable={false} /> : <span className={`ph-blank ${className ?? ''}`} />;
+  return url ? (
+    <img src={url} alt={alt} className={className} loading="lazy" draggable={false} />
+  ) : (
+    <span className={`ph-blank ${className ?? ''}`} />
+  );
 }
 
 export function Thumb({ photo, onOpen, onDelete }: { photo: PhotoRef; onOpen?: () => void; onDelete?: () => void }) {
@@ -45,7 +59,15 @@ export function Thumb({ photo, onOpen, onDelete }: { photo: PhotoRef; onOpen?: (
   );
 }
 
-export function PhotoAdd({ label, onClick, icon = 'camera' }: { label: string; onClick: () => void; icon?: 'camera' | 'doc' }) {
+export function PhotoAdd({
+  label,
+  onClick,
+  icon = 'camera',
+}: {
+  label: string;
+  onClick: () => void;
+  icon?: 'camera' | 'doc';
+}) {
   return (
     <button type="button" className="photo-add" onClick={onClick} aria-label={label}>
       <Icon name={icon} />

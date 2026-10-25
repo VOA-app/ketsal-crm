@@ -72,7 +72,14 @@ export function Seg<V extends string>({
   return (
     <div className={`seg ${className}`} role="tablist" aria-label={ariaLabel}>
       {options.map(([v, l]) => (
-        <button type="button" key={v} role="tab" className={v === value ? 'on' : ''} aria-selected={v === value} onClick={() => onChange(v)}>
+        <button
+          type="button"
+          key={v}
+          role="tab"
+          className={v === value ? 'on' : ''}
+          aria-selected={v === value}
+          onClick={() => onChange(v)}
+        >
           {l}
         </button>
       ))}
@@ -165,11 +172,37 @@ export function Select({
   );
 }
 
-export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <input type="checkbox" className="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />;
+export function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      className="switch"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      aria-label={label}
+    />
+  );
 }
 
-export function SwitchRow({ title, sub, checked, onChange }: { title: string; sub?: string; checked: boolean; onChange: (v: boolean) => void }) {
+export function SwitchRow({
+  title,
+  sub,
+  checked,
+  onChange,
+}: {
+  title: string;
+  sub?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <div className="switch-row">
       <div>
@@ -181,7 +214,17 @@ export function SwitchRow({ title, sub, checked, onChange }: { title: string; su
   );
 }
 
-export function Check({ checked, onChange, children, className = '' }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode; className?: string }) {
+export function Check({
+  checked,
+  onChange,
+  children,
+  className = '',
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <label className={`check ${className}`}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -200,7 +243,12 @@ export function Kv({ k, children, className = '' }: { k: string; children: React
 }
 
 export function Swatch({ hex, size }: { hex?: string; size?: number }) {
-  return <span className="swatch" style={{ background: hex || 'transparent', ...(size ? { width: size, height: size } : null) }} />;
+  return (
+    <span
+      className="swatch"
+      style={{ background: hex || 'transparent', ...(size ? { width: size, height: size } : null) }}
+    />
+  );
 }
 
 export function Empty({ title, text, children }: { title?: string; text?: string; children?: ReactNode }) {
@@ -287,7 +335,17 @@ export function SearchBox({
   );
 }
 
-export function Notice({ icon, text, btn, onClick }: { icon: IconName; text: string; btn: string; onClick: () => void }) {
+export function Notice({
+  icon,
+  text,
+  btn,
+  onClick,
+}: {
+  icon: IconName;
+  text: string;
+  btn: string;
+  onClick: () => void;
+}) {
   return (
     <div className="notice">
       <Icon name={icon} className="i-sm" />

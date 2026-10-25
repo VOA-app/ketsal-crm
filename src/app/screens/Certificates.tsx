@@ -87,7 +87,9 @@ function CertForm({ id }: { id: string | null }) {
             <div className="fw-600">{CERT_STATUS[st]}</div>
             {c && p && (
               <>
-                <div className="note">{S.procLine(fmtDate(p.date, true), fullName(c), serviceName(idx, p.serviceId))}</div>
+                <div className="note">
+                  {S.procLine(fmtDate(p.date, true), fullName(c), serviceName(idx, p.serviceId))}
+                </div>
                 <button
                   type="button"
                   className="btn-link"
@@ -114,7 +116,13 @@ function CertForm({ id }: { id: string | null }) {
               ))}
             </Chips>
             <div className="affix">
-              <input className="input" inputMode="numeric" value={d.amount ? String(d.amount) : ''} onChange={(e) => up({ amount: parseMoney(e.target.value) })} aria-label={S.amount} />
+              <input
+                className="input"
+                inputMode="numeric"
+                value={d.amount ? String(d.amount) : ''}
+                onChange={(e) => up({ amount: parseMoney(e.target.value) })}
+                aria-label={S.amount}
+              />
               <span>₽</span>
             </div>
             <FieldError text={errors.amount} />
@@ -124,19 +132,39 @@ function CertForm({ id }: { id: string | null }) {
               <input className="input" type="date" value={d.soldAt} onChange={(e) => up({ soldAt: e.target.value })} />
             </Field>
             <Field label={S.validToLabel}>
-              <input className="input" type="date" value={d.validTo} onChange={(e) => up({ validTo: e.target.value })} />
+              <input
+                className="input"
+                type="date"
+                value={d.validTo}
+                onChange={(e) => up({ validTo: e.target.value })}
+              />
             </Field>
           </div>
           <Field label={S.whoBought} opt={ru.common.optional}>
-            <input className="input" value={d.buyer} onChange={(e) => up({ buyer: e.target.value })} autoComplete="off" />
+            <input
+              className="input"
+              value={d.buyer}
+              onChange={(e) => up({ buyer: e.target.value })}
+              autoComplete="off"
+            />
           </Field>
           <Field label={S.forWhom} opt={ru.common.optional}>
-            <input className="input" value={d.recipient} onChange={(e) => up({ recipient: e.target.value })} autoComplete="off" />
+            <input
+              className="input"
+              value={d.recipient}
+              onChange={(e) => up({ recipient: e.target.value })}
+              autoComplete="off"
+            />
           </Field>
           <Field label={S.payment} as="div">
             <Chips>
               {PAYMENTS.filter((pm) => pm !== 'cert').map((pm) => (
-                <Chip key={pm} label={PAYMENT[pm]} on={d.payment === pm} onClick={() => up({ payment: pm as Certificate['payment'] })} />
+                <Chip
+                  key={pm}
+                  label={PAYMENT[pm]}
+                  on={d.payment === pm}
+                  onClick={() => up({ payment: pm as Certificate['payment'] })}
+                />
               ))}
             </Chips>
           </Field>
@@ -184,7 +212,7 @@ export function Certificates() {
             </Chip>
           ))}
         </Chips>
-        <p className="note mx-4 mt-6">{S.note}</p>
+        <p className="note mx-4 mt-6">{S.listNote}</p>
         {list.length ? (
           <div className="list mt-12">
             {list.map((x) => {
@@ -197,9 +225,16 @@ export function Certificates() {
                 const c = p ? idx.client.get(p.clientId) : undefined;
                 sub = `${S.usedAt(x.usedAt ? fmtDate(x.usedAt, true) : '')}${c ? ` · ${fullName(c)}` : x.usedProcId === 'deleted' ? S.cardDeleted : ''}`;
               }
-              const who = [x.buyer && S.buyer(x.buyer), x.recipient && S.recipient(x.recipient)].filter(Boolean).join(' · ');
+              const who = [x.buyer && S.buyer(x.buyer), x.recipient && S.recipient(x.recipient)]
+                .filter(Boolean)
+                .join(' · ');
               return (
-                <button type="button" key={x.id} className={`row ${st === 'active' ? '' : 'row--dim'}`} onClick={() => openCertForm(x.id)}>
+                <button
+                  type="button"
+                  key={x.id}
+                  className={`row ${st === 'active' ? '' : 'row--dim'}`}
+                  onClick={() => openCertForm(x.id)}
+                >
                   <span className="avatar" aria-hidden="true">
                     <Icon name="gift" className="i-sm" />
                   </span>

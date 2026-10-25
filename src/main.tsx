@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './design/fonts.css';
 import './design/tokens.css';
 import './design/base.css';
+import './design/app.css';
 import { App } from './app/App';
 
 // Защита от встраивания в чужие страницы: frame-ancestors в meta не работает (SPEC §11)

@@ -90,10 +90,21 @@ function useEscape() {
   }, []);
 }
 
+/** Печать и просмотр фото относятся к экрану, с которого открыты: при переходе закрываются. */
+function useCloseOverlaysOnNavigate() {
+  const loc = useLocation();
+  useEffect(() => {
+    const s = useUi.getState();
+    if (s.printClientId) s.closePrint();
+    if (s.viewer) s.closeViewer();
+  }, [loc.pathname]);
+}
+
 function Shell() {
   const status = useData((s) => s.status);
   useTheme();
   useEscape();
+  useCloseOverlaysOnNavigate();
   useEffect(() => {
     const onVis = () => {
       if (!document.hidden) useData.getState().refreshToday();

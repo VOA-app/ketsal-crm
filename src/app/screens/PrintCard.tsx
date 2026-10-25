@@ -1,5 +1,5 @@
 // Печать и PDF карты клиента (SPEC §9.2): материалы, фото, здоровье — по галочкам.
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clientInfo } from '../../domain/client';
 import { PHOTO_STAGES } from '../../domain/constants';
@@ -11,7 +11,16 @@ import { PHOTO_STAGE, STATUS, VISIT_TYPE, ru } from '../../i18n/ru';
 import { Logo } from '../components/Brand';
 import { Icon } from '../components/Icon';
 import { PhotoImg } from '../components/Photo';
-import { anestName, healthMarks, needleName, pigmentFull, procDiscount, procTotal, serviceName, zoneName } from '../names';
+import {
+  anestName,
+  healthMarks,
+  needleName,
+  pigmentFull,
+  procDiscount,
+  procTotal,
+  serviceName,
+  zoneName,
+} from '../names';
 import { useData } from '../store';
 import { useUi } from '../ui';
 
@@ -22,13 +31,29 @@ export function PrintCard() {
   const close = useUi((s) => s.closePrint);
   const idx = useData((s) => s.idx);
   const [opts, setOpts] = useState({ materials: true, photos: true, health: false });
+  const page = useRef<HTMLDivElement>(null);
   const c = id ? idx.client.get(id) : undefined;
+  // Лист A4 шире телефона: уменьшаем его под ширину экрана (на печать не влияет)
+  useLayoutEffect(() => {
+    const el = page.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.zoom = '';
+      const avail = window.innerWidth - 16;
+      if (el.offsetWidth > avail) el.style.zoom = String(avail / el.offsetWidth);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [id, opts]);
   if (!c) return null;
   const inf = clientInfo(idx, c);
   const procs = inf.procs.slice().reverse();
   const done = procs.filter((p) => p.status === 'done');
   const marks = healthMarks(c);
-  const photos = opts.photos ? procs.flatMap((p) => PHOTO_STAGES.flatMap((st) => (p.photos?.[st] || []).map((photo) => ({ photo, p, st })))) : [];
+  const photos = opts.photos
+    ? procs.flatMap((p) => PHOTO_STAGES.flatMap((st) => (p.photos?.[st] || []).map((photo) => ({ photo, p, st }))))
+    : [];
   const opt = (k: keyof typeof opts, label: string) => (
     <label>
       <input type="checkbox" checked={opts[k]} onChange={(e) => setOpts({ ...opts, [k]: e.target.checked })} /> {label}
@@ -58,7 +83,7 @@ export function PrintCard() {
           <Icon name="print" className="i-sm" /> {PR.go}
         </button>
       </div>
-      <div className="print-page">
+      <div className="print-page" ref={page}>
         <div className="pp-head">
           <div className="pp-logo">
             <Logo label="Кетсаль" />
@@ -92,7 +117,9 @@ export function PrintCard() {
             ) : (
               <div>{PR.noMarks}</div>
             )}
-            {c.consents?.health?.date && <div className="muted">{PR.healthConsent(fmtDateNum(c.consents.health.date))}</div>}
+            {c.consents?.health?.date && (
+              <div className="muted">{PR.healthConsent(fmtDateNum(c.consents.health.date))}</div>
+            )}
           </div>
         )}
         <div className="pp-sec">
@@ -114,7 +141,10 @@ export function PrintCard() {
                 {procs.map((p) => {
                   const dim = p.status !== 'done';
                   const disc = procDiscount(p);
-                  const an = [p.anesthesia.primary, p.anesthesia.secondary].filter(Boolean).map((a) => anestName(idx, a)).join('; ');
+                  const an = [p.anesthesia.primary, p.anesthesia.secondary]
+                    .filter(Boolean)
+                    .map((a) => anestName(idx, a))
+                    .join('; ');
                   const pigs = p.pigments.map((g) => PR.lot(pigmentFull(idx, g.pigmentId), g.lot, g.ratio)).join(' + ');
                   const mats = [
                     an && PR.anesthesia(an),
