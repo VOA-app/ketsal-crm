@@ -608,7 +608,7 @@ interface PhotoRef {
 - [x] Репозиторий `ketsal-crm` на GitHub (аккаунт салона `VOA-app`), GitHub Pages из Actions: https://voa-app.github.io/ketsal-crm/ (25.10.2026).
 
 ### Этап 0. Технические проверки (spikes), ~1–2 вечера
-- [ ] Зарегистрировать приложение в Яндекс OAuth (права: папка приложения; redirect URI из §6.1). Регистрирует салон, в проект попадает только ClientID.
+- [x] Зарегистрировать приложение в Яндекс OAuth (права: папка приложения; redirect URI из §6.1). Регистрирует салон, в проект попадает только ClientID: `8b5f91e91a17446f8240d6489ca507db` (25.10.2026).
 - [x] `spikes/index.html`: проверки устройства, входа и Диска с отчётом без токена.
 - [ ] На ПК (Chrome) и на iPhone в Safari и в режиме «На экран Домой»: вход (PKCE и запасной поток), **CORS на `oauth.yandex.ru/token`**, список / загрузка 5 МБ / скачивание / удаление на Диске (**CORS на href‑ссылках**, реальные хосты), PBKDF2 600k (время), AES‑GCM, IndexedDB, `storage.persist()`, HEIC, `navigator.share({files})`, WebAuthn PRF.
 - [ ] Если CORS не хватает — `ProxyAdapter` на Yandex Cloud Functions (одна функция, ~50 строк).

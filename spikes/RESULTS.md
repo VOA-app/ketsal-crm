@@ -1,6 +1,7 @@
 # Этап 0 — результаты проверок
 
-Страница проверок: `spikes/index.html` (на GitHub Pages — `https://<логин>.github.io/ketsal-crm/spikes/`).
+Страница проверок: `spikes/index.html` (на GitHub Pages — `https://voa-app.github.io/ketsal-crm/spikes/`).
+ClientID приложения в Яндекс OAuth: `8b5f91e91a17446f8240d6489ca507db` (подставлен на странице по умолчанию).
 Каждую проверку на iPhone делаем дважды: во вкладке Safari и с экрана «Домой».
 
 ## Итоги

@@ -78,6 +78,8 @@
 
 <script type="module">
   const $ = (s) => document.querySelector(s);
+  // ClientID публичный (SPEC §6.1): приложение салона на oauth.yandex.ru.
+  const DEFAULT_CLIENT_ID = '8b5f91e91a17446f8240d6489ca507db';
   const KEY_RESULTS = 'ketsal-spike-results';
   const KEY_CLIENT = 'ketsal-spike-client';
   const KEY_PENDING = 'ketsal-spike-pending';
@@ -505,7 +507,7 @@
   // ── Запуск ──
   $('#env').textContent = `${ctxLabel}. ${window.isSecureContext ? 'HTTPS есть.' : 'Нет HTTPS: часть проверок не сработает.'}`;
   $('#redirect').textContent = redirectUri;
-  $('#client-id').value = ls.get(KEY_CLIENT, '') || '';
+  $('#client-id').value = ls.get(KEY_CLIENT, '') || DEFAULT_CLIENT_ID;
   $('#client-id').addEventListener('input', () => ls.set(KEY_CLIENT, clientId()));
   $('#btn-device').addEventListener('click', () => runDevice());
   $('#photo').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) photoTest(f); e.target.value = ''; });
