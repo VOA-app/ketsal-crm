@@ -487,26 +487,24 @@
       else {
         const host = new URL(j.href).host;
         hosts.add(host);
-        const t0 = performance.now();
-        record('disk', 'download', 'Скачивание по ссылке Диска', null, `идёт, хост ${host}… дождитесь результата`);
-        try {
-          const g = await fetch(j.href);
-          const finalHost = new URL(g.url).host;
-          hosts.add(finalHost);
-          const same = (await sha256hex(new Uint8Array(await g.arrayBuffer()))) === sum;
-          record('disk', 'download', 'Скачивание по ссылке Диска и сверка (CORS)', g.ok && same, `ответ ${g.status}, ${Math.round(performance.now() - t0)} мс, ${same ? 'байты совпали' : 'байты НЕ совпали'}, хост ${host}${finalHost !== host ? ` → ${finalHost}` : ''}`);
-        } catch {
-          // Где рвётся CORS: на самой ссылке или на хосте, куда она перенаправляет.
-          let why;
+        // На ПК Chrome обычный запрос получает 403 без CORS. Пробуем без Referer,
+        // каждый раз со свежей ссылкой: вдруг Диск проверяет, с какой страницы пришли.
+        const variants = [['download', 'обычный запрос', {}], ['download-noref', 'без Referer', { referrerPolicy: 'no-referrer' }]];
+        for (const [id, label, opts] of variants) {
+          const r = id === 'download' ? null : await api(`/resources/download?path=${encodeURIComponent(path)}`);
+          const href = r ? (await r.json().catch(() => ({}))).href : j.href;
+          if (!href) { record('disk', id, `Скачивание, ${label}`, false, 'ссылка не выдана'); continue; }
+          const t0 = performance.now();
+          record('disk', id, `Скачивание, ${label}`, null, `идёт, хост ${host}… дождитесь результата`);
           try {
-            const m = await fetch(j.href, { redirect: 'manual' });
-            why = m.type === 'opaqueredirect'
-              ? `${host} разрешает CORS, но перенаправляет на другой хост, где CORS нет (его адрес — в консоли F12)`
-              : `${host} отвечает ${m.status} без перенаправления, но тело не читается`;
+            const g = await fetch(href, opts);
+            const finalHost = new URL(g.url).host;
+            hosts.add(finalHost);
+            const same = (await sha256hex(new Uint8Array(await g.arrayBuffer()))) === sum;
+            record('disk', id, `Скачивание, ${label}, и сверка (CORS)`, g.ok && same, `ответ ${g.status}, ${Math.round(performance.now() - t0)} мс, ${same ? 'байты совпали' : 'байты НЕ совпали'}, хост ${host}${finalHost !== host ? ` → ${finalHost}` : ''}`);
           } catch {
-            why = `у ответа ${host} нет CORS (подробности — в консоли F12)`;
+            record('disk', id, `Скачивание, ${label}`, false, `ответ ${host} не дошёл до страницы: нет CORS (в консоли F12 видно, 403 или перенаправление)`);
           }
-          record('disk', 'download', 'Скачивание по ссылке Диска', false, `ответ не дошёл до страницы: ${why}`);
         }
       }
     } catch (e) { record('disk', 'download', 'Скачивание', false, errText(e)); }

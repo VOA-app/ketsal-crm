@@ -74,4 +74,12 @@ ClientID приложения в Яндекс OAuth: `8b5f91e91a17446f8240d6489c
 - ✓ Удаление файла — ответ 204
 - · Хосты для CSP — cloud-api.yandex.net, uploader329kdlaam.disk.yandex.net, downloader.disk.yandex.ru
 
-Preflight на `downloader.disk.yandex.ru` отдаёт `Access-Control-Allow-Origin: *`, а настоящий GET — нет. Вероятно, ссылка перенаправляет на хост хранилища без CORS. На страницу добавлена диагностика перенаправления.
+Preflight на `downloader.disk.yandex.ru` отдаёт `Access-Control-Allow-Origin: *`, а настоящий GET — нет. На страницу добавлена диагностика перенаправления.
+
+### ПК, Chrome 156, вкладка — 25.10.2026, 22:53 (диагностика скачивания)
+
+- ✓ Загрузка 5 МБ — ответ 201, 41552 мс, хост uploader86jpjfme.disk.yandex.net
+- ✗ Скачивание — у ответа downloader.disk.yandex.ru нет CORS
+- ✓ Удаление — ответ 204
+
+Консоль Chrome: `GET https://downloader.disk.yandex.ru/disk/… net::ERR_FAILED 403 (Forbidden)`, `No 'Access-Control-Allow-Origin' header`. Перенаправления нет: downloader сам отказывает запросу со страницы (403). Следующая проверка — запрос без Referer; если тоже 403, скачивание из браузера невозможно, нужен прокси (§6.4).
