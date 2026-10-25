@@ -1,0 +1,11 @@
+node_modules/
+dist/
+_site/
+coverage/
+test-results/
+playwright-report/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db

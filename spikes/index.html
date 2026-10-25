@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Проверки">
+<meta name="theme-color" content="#F7F4F0">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Кетсаль · проверки этапа 0</title>
+<style>
+  :root { --emerald: #217870; --deep: #14514B; --mint: #E7F0EE; --milk: #F7F4F0; --graphite: #2B2223; --gray: #6E7674; --line: #DFE4E2; --scarlet: #D00405; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--milk); color: var(--graphite); font: 16px/1.45 -apple-system, system-ui, 'Segoe UI', sans-serif; padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 32px); }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 6px; }
+  section { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 14px; }
+  button, label.file { font: inherit; font-size: 16px; border: 0; border-radius: 12px; padding: 11px 16px; background: var(--emerald); color: #fff; min-height: 44px; margin: 4px 6px 4px 0; cursor: pointer; display: inline-block; }
+  .secondary, label.file { background: var(--mint); color: var(--deep); }
+  label.file input { display: none; }
+  input[type=text] { font: inherit; font-size: 16px; width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; margin: 4px 0 6px; }
+  .hint { color: var(--gray); font-size: 14px; margin: 4px 0 8px; }
+  .hint b { color: var(--graphite); font-weight: 500; word-break: break-all; }
+  ul.res { list-style: none; padding: 0; margin: 10px 0 0; }
+  ul.res li { padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; display: flex; gap: 10px; }
+  ul.res li .m { flex: none; width: 18px; font-weight: 700; }
+  .ok { color: var(--emerald); } .fail { color: var(--scarlet); } .info { color: var(--gray); }
+  textarea { width: 100%; min-height: 220px; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  #auth-state { font-weight: 500; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Кетсаль · проверки этапа 0</h1>
+  <p class="hint" id="env"></p>
+
+  <section>
+    <h2>1. Устройство</h2>
+    <p class="hint">Вход в Яндекс не нужен. На iPhone проверьте дважды: во вкладке Safari и с экрана «Домой» (Поделиться → На экран «Домой»).</p>
+    <button id="btn-device">Проверить устройство</button>
+    <label class="file">Выбрать фото из галереи<input type="file" id="photo" accept="image/*"></label>
+    <button class="secondary" id="btn-share">Проверить «Поделиться» файлом</button>
+    <button class="secondary" id="btn-prf">Проверить Face ID</button>
+    <p class="hint">Проверка Face ID создаст ключ входа «Кетсаль · проверка» (нажмите кнопку второй раз, чтобы проверить вход по нему). После проверок ключ можно удалить: Настройки → Пароли.</p>
+    <ul class="res" id="res-device"></ul>
+  </section>
+
+  <section>
+    <h2>2. Вход через Яндекс</h2>
+    <label class="hint" for="client-id">ClientID приложения с oauth.yandex.ru</label>
+    <input type="text" id="client-id" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <p class="hint">Этот адрес должен быть в Redirect URI приложения: <b id="redirect"></b></p>
+    <p class="hint">Статус: <span id="auth-state"></span></p>
+    <button id="btn-pkce">Войти: код + PKCE</button>
+    <button class="secondary" id="btn-implicit">Войти: токен сразу</button>
+    <button class="secondary" id="btn-popup">Войти в отдельном окне</button>
+    <button class="secondary" id="btn-logout">Выйти</button>
+    <ul class="res" id="res-auth"></ul>
+  </section>
+
+  <section>
+    <h2>3. Яндекс Диск</h2>
+    <p class="hint">Создаст в папке приложения файл 5 МБ со случайными байтами, скачает его, сверит и удалит.</p>
+    <button id="btn-disk">Проверить Диск</button>
+    <ul class="res" id="res-disk"></ul>
+  </section>
+
+  <section>
+    <h2>4. Отчёт</h2>
+    <p class="hint">Токена и личных данных в отчёте нет. Скопируйте его и пришлите в чат.</p>
+    <textarea id="report" readonly aria-label="Отчёт"></textarea>
+    <button id="btn-copy">Скопировать отчёт</button>
+    <button class="secondary" id="btn-clear">Очистить результаты</button>
+  </section>
+</main>
+
+<script type="module">
+  const $ = (s) => document.querySelector(s);
+  const KEY_RESULTS = 'ketsal-spike-results';
+  const KEY_CLIENT = 'ketsal-spike-client';
+  const KEY_PENDING = 'ketsal-spike-pending';
+  const KEY_POPUP = 'ketsal-spike-popup';
+  const KEY_TOKEN = 'ketsal-spike-token';
+  const KEY_CRED = 'ketsal-spike-cred';
+  const API = 'https://cloud-api.yandex.net/v1/disk';
+
+  const ls = {
+    get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* приватный режим */ } },
+    del(k) { try { localStorage.removeItem(k); } catch { /* приватный режим */ } },
+  };
+  const ss = {
+    get(k) { try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* приватный режим */ } },
+    del(k) { try { sessionStorage.removeItem(k); } catch { /* приватный режим */ } },
+  };
+
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const ctxKey = standalone ? 'home' : 'tab';
+  const ctxLabel = standalone ? 'С экрана «Домой»' : 'Вкладка браузера';
+  const redirectUri = location.origin + location.pathname;
+  const results = ls.get(KEY_RESULTS, {});
+
+  const errText = (e) => `${e && e.name ? e.name : 'Error'}: ${e && e.message ? e.message : e}`;
+  const fmtMB = (n) => (n < 1048576 ? `${Math.max(1, Math.round(n / 1024))} КБ` : `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0).replace('.', ',')} МБ`);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function randomBytes(n) {
+    const out = new Uint8Array(n);
+    for (let i = 0; i < n; i += 65536) crypto.getRandomValues(out.subarray(i, Math.min(n, i + 65536)));
+    return out;
+  }
+  function b64url(bytes) {
+    let s = '';
+    for (const b of bytes) s += String.fromCharCode(b);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  async function sha256hex(bytes) {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    return Array.from(h, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function record(group, id, title, ok, detail = '') {
+    results[`${ctxKey}:${id}`] = { group, ctx: ctxLabel, title, ok, detail: String(detail), at: new Date().toISOString() };
+    ls.set(KEY_RESULTS, results);
+    render();
+  }
+  function mark(ok) { return ok === true ? ['✓', 'ok'] : ok === false ? ['✗', 'fail'] : ['·', 'info']; }
+  function render() {
+    for (const g of ['device', 'auth', 'disk']) {
+      const ul = $(`#res-${g}`);
+      ul.replaceChildren();
+      for (const r of Object.values(results).filter((x) => x.group === g && x.ctx === ctxLabel)) {
+        const li = document.createElement('li');
+        const m = document.createElement('span');
+        const [sym, cls] = mark(r.ok);
+        m.className = `m ${cls}`;
+        m.textContent = sym;
+        const t = document.createElement('span');
+        t.textContent = r.detail ? `${r.title} — ${r.detail}` : r.title;
+        li.append(m, t);
+        ul.append(li);
+      }
+    }
+    $('#auth-state').textContent = getToken() ? 'вход выполнен, токен сохранён в этой вкладке (не показывается)' : 'вход не выполнен';
+    $('#report').value = buildReport();
+  }
+  function buildReport() {
+    const lines = ['# Этап 0 — отчёт', '', `- Браузер: ${navigator.userAgent}`, `- Страница: ${redirectUri}`, `- Время: ${new Date().toLocaleString('ru-RU')}`, ''];
+    const byCtx = {};
+    for (const r of Object.values(results)) (byCtx[r.ctx] = byCtx[r.ctx] || []).push(r);
+    for (const [ctx, list] of Object.entries(byCtx)) {
+      lines.push(`## ${ctx}`);
+      for (const g of ['device', 'auth', 'disk']) {
+        for (const r of list.filter((x) => x.group === g)) lines.push(`- ${mark(r.ok)[0]} ${r.title}${r.detail ? ` — ${r.detail}` : ''}`);
+      }
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
+  // ── 1. Устройство ──
+  function idbTest() {
+    return new Promise((resolve, reject) => {
+      const t0 = performance.now();
+      const req = indexedDB.open('ketsal-spike', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('t');
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const data = randomBytes(1 << 20);
+        const tx = db.transaction('t', 'readwrite');
+        tx.objectStore('t').put(data, 'k');
+        tx.onerror = () => reject(tx.error);
+        tx.oncomplete = () => {
+          const r = db.transaction('t').objectStore('t').get('k');
+          r.onerror = () => reject(r.error);
+          r.onsuccess = () => {
+            const ok = r.result && r.result.byteLength === data.byteLength;
+            db.close();
+            if (ok) resolve(Math.round(performance.now() - t0)); else reject(new Error('данные не совпали'));
+          };
+        };
+      };
+    });
+  }
+
+  async function runDevice() {
+    record('device', 'secure', 'Безопасный контекст (HTTPS)', window.isSecureContext, window.isSecureContext ? 'есть' : 'нет: без HTTPS шифрование и service worker недоступны');
+    record('device', 'mode', 'Режим запуска', null, standalone ? 'с экрана «Домой»' : 'вкладка браузера');
+    if (!window.crypto || !crypto.subtle) {
+      record('device', 'pbkdf2', 'Web Crypto', false, 'crypto.subtle недоступен');
+    } else {
+      try {
+        const base = await crypto.subtle.importKey('raw', new TextEncoder().encode('проверочный пароль 2026'), 'PBKDF2', false, ['deriveBits']);
+        const t0 = performance.now();
+        await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: crypto.getRandomValues(new Uint8Array(16)), iterations: 600000 }, base, 256);
+        const ms = Math.round(performance.now() - t0);
+        record('device', 'pbkdf2', 'Вход по паролю: PBKDF2-SHA256, 600 000 итераций', ms <= 3000 ? true : null, `${ms} мс${ms > 3000 ? ', медленно — обсудим число итераций' : ''}`);
+      } catch (e) { record('device', 'pbkdf2', 'Вход по паролю: PBKDF2', false, errText(e)); }
+      try {
+        const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        const data = randomBytes(1 << 20);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const additionalData = new TextEncoder().encode('vault|shard|00|1');
+        const t0 = performance.now();
+        const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData }, key, data);
+        const pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData }, key, ct));
+        const ms = Math.round(performance.now() - t0);
+        const same = pt.length === data.length && pt.every((b, i) => b === data[i]);
+        const bad = new Uint8Array(ct);
+        bad[10] ^= 1;
+        let caught = false;
+        try { await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData }, key, bad); } catch { caught = true; }
+        record('device', 'aes', 'Шифрование AES-256-GCM, 1 МБ туда и обратно', same && caught, `${ms} мс, ${caught ? 'подмена байта обнаружена' : 'подмена НЕ обнаружена'}`);
+      } catch (e) { record('device', 'aes', 'Шифрование AES-256-GCM', false, errText(e)); }
+    }
+    try { record('device', 'idb', 'IndexedDB: запись и чтение 1 МБ', true, `${await idbTest()} мс`); } catch (e) { record('device', 'idb', 'IndexedDB', false, errText(e)); }
+    try {
+      const p = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : null;
+      const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      record('device', 'persist', 'Постоянное хранилище (storage.persist)', p === true ? true : null, `${p === null ? 'API нет' : p ? 'разрешено' : 'пока не разрешено'}${est && est.quota ? `, доступно ≈ ${fmtMB(est.quota)}` : ''}`);
+    } catch (e) { record('device', 'persist', 'Постоянное хранилище', false, errText(e)); }
+    try {
+      const f = new File([randomBytes(1024)], 'ketsal-backup-check.zip', { type: 'application/zip' });
+      const can = !!(navigator.canShare && navigator.canShare({ files: [f] }));
+      record('device', 'canshare', '«Поделиться» файлом копии: поддержка', can ? true : null, can ? 'есть' : 'нет — копия будет скачиваться обычным файлом');
+    } catch (e) { record('device', 'canshare', '«Поделиться» файлом', false, errText(e)); }
+    record('device', 'offscreen', 'OffscreenCanvas для фото', typeof OffscreenCanvas !== 'undefined' ? true : null, typeof OffscreenCanvas !== 'undefined' ? 'есть' : 'нет, будет обычный canvas');
+    try {
+      const has = !!window.PublicKeyCredential;
+      const uv = has && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ? await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable() : false;
+      let prf = 'не сообщает';
+      if (has && PublicKeyCredential.getClientCapabilities) {
+        const caps = await PublicKeyCredential.getClientCapabilities();
+        prf = caps['extension:prf'] ? 'заявлен' : 'не заявлен';
+      }
+      record('device', 'webauthn', 'Face ID / Touch ID в браузере', uv, `${uv ? 'доступен' : 'недоступен'}, PRF: ${prf}`);
+    } catch (e) { record('device', 'webauthn', 'Face ID / Touch ID', false, errText(e)); }
+  }
+
+  async function photoTest(file) {
+    const t0 = performance.now();
+    const type = file.type || 'тип не указан';
+    let bmp = null;
+    let how = 'createImageBitmap';
+    try {
+      bmp = await createImageBitmap(file);
+    } catch {
+      how = '<img>';
+      const url = URL.createObjectURL(file);
+      try {
+        bmp = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('не открылось')); i.src = url; });
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        record('device', 'photo', 'Фото из галереи', false, `${type}, ${errText(e)}`);
+        return;
+      }
+      URL.revokeObjectURL(url);
+    }
+    const w = bmp.width || bmp.naturalWidth;
+    const h = bmp.height || bmp.naturalHeight;
+    const k = Math.min(1, 2560 / Math.max(w, h));
+    const cw = Math.round(w * k);
+    const ch = Math.round(h * k);
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    canvas.getContext('2d').drawImage(bmp, 0, 0, cw, ch);
+    if (bmp.close) bmp.close();
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+    record('device', 'photo', 'Фото: открыть, уменьшить до 2560 px, сохранить JPEG', !!blob, `${type} через ${how}, ${w}×${h} → ${cw}×${ch}, ${fmtMB(file.size)} → ${blob ? fmtMB(blob.size) : '—'}, ${Math.round(performance.now() - t0)} мс`);
+  }
+
+  async function shareTest() {
+    const f = new File([randomBytes(2048)], 'ketsal-backup-check.zip', { type: 'application/zip' });
+    try {
+      await navigator.share({ files: [f], title: 'Кетсаль · проверка' });
+      record('device', 'share', '«Поделиться» файлом копии', true, 'окно открылось');
+    } catch (e) {
+      const opened = e && e.name === 'AbortError';
+      record('device', 'share', '«Поделиться» файлом копии', opened ? true : false, opened ? 'окно открылось, отправку отменили' : errText(e));
+    }
+  }
+
+  async function prfTest() {
+    if (!window.PublicKeyCredential) { record('device', 'prf', 'Face ID: ключ из passkey (PRF)', false, 'WebAuthn нет'); return; }
+    const saved = ls.get(KEY_CRED, null);
+    const salt = saved ? Uint8Array.from(atob(saved.salt), (c) => c.charCodeAt(0)) : crypto.getRandomValues(new Uint8Array(32));
+    const secretLen = (cred) => {
+      const ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+      return { enabled: !!(ext.prf && ext.prf.enabled), len: ext.prf && ext.prf.results && ext.prf.results.first ? ext.prf.results.first.byteLength : 0 };
+    };
+    try {
+      if (!saved) {
+        const cred = await navigator.credentials.create({ publicKey: {
+          rp: { name: 'Кетсаль · проверка' },
+          user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'ketsal-check', displayName: 'Кетсаль · проверка' },
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+          authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'preferred', userVerification: 'required' },
+          timeout: 60000,
+          extensions: { prf: { eval: { first: salt } } },
+        } });
+        const r = secretLen(cred);
+        ls.set(KEY_CRED, { id: b64url(new Uint8Array(cred.rawId)), salt: btoa(String.fromCharCode(...salt)) });
+        if (r.len === 32) record('device', 'prf', 'Face ID: ключ из passkey (PRF)', true, 'секрет получен сразу при создании');
+        else record('device', 'prf', 'Face ID: ключ из passkey (PRF)', null, `ключ создан, PRF ${r.enabled ? 'включён' : 'не включён'}. Нажмите «Проверить Face ID» ещё раз`);
+        return;
+      }
+      const id = Uint8Array.from(atob(saved.id.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+      const as = await navigator.credentials.get({ publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type: 'public-key', id }],
+        userVerification: 'required',
+        timeout: 60000,
+        extensions: { prf: { eval: { first: salt } } },
+      } });
+      const r = secretLen(as);
+      record('device', 'prf', 'Face ID: ключ из passkey (PRF)', r.len === 32, r.len === 32 ? 'вход по Face ID выдаёт секрет — быстрый вход по Face ID возможен' : 'вход прошёл, но секрета нет — будет код из 6 цифр');
+    } catch (e) {
+      record('device', 'prf', 'Face ID: ключ из passkey (PRF)', false, errText(e));
+    }
+  }
+
+  // ── 2. Вход через Яндекс ──
+  function getToken() { const t = ss.get(KEY_TOKEN); return t && t.token ? t.token : ''; }
+  function saveToken(token) { ss.set(KEY_TOKEN, { token }); }
+  function clientId() { return $('#client-id').value.trim(); }
+
+  async function startLogin(mode) {
+    const cid = clientId();
+    if (!cid) { record('auth', 'client', 'ClientID', false, 'вставьте ClientID приложения'); return; }
+    const state = `${mode[0]}.${b64url(crypto.getRandomValues(new Uint8Array(16)))}`;
+    const params = { client_id: cid, redirect_uri: redirectUri, state };
+    const pending = { mode, state, clientId: cid, startedIn: ctxLabel };
+    if (mode === 'implicit') params.response_type = 'token';
+    else {
+      pending.verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+      params.response_type = 'code';
+      params.code_challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pending.verifier))));
+      params.code_challenge_method = 'S256';
+    }
+    ls.set(KEY_PENDING, pending);
+    ss.set(KEY_PENDING, pending);
+    const url = `https://oauth.yandex.ru/authorize?${new URLSearchParams(params)}`;
+    if (mode === 'popup') {
+      ls.del(KEY_POPUP);
+      const w = window.open(url, 'ketsal-oauth', 'width=480,height=720');
+      if (!w) { record('auth', 'popup', 'Вход в отдельном окне', false, 'браузер не открыл окно'); return; }
+      waitPopup(pending);
+    } else {
+      location.assign(url);
+    }
+  }
+
+  function waitPopup(pending) {
+    let done = false;
+    const finish = (data, via) => {
+      if (done || !data || data.state !== pending.state) return;
+      done = true;
+      window.removeEventListener('message', onMsg);
+      window.removeEventListener('storage', onStorage);
+      if (data.error) record('auth', 'popup', 'Вход в отдельном окне', false, `Яндекс вернул ошибку: ${data.error}`);
+      else exchange(data.code, pending, `код пришёл из окна (${via})`);
+    };
+    const onMsg = (e) => { if (e.origin === location.origin && e.data && e.data.type === 'ketsal-oauth') finish(e.data, 'postMessage'); };
+    const onStorage = (e) => { if (e.key === KEY_POPUP && e.newValue) finish(JSON.parse(e.newValue), 'localStorage'); };
+    window.addEventListener('message', onMsg);
+    window.addEventListener('storage', onStorage);
+    setTimeout(() => { if (!done) { done = true; record('auth', 'popup', 'Вход в отдельном окне', false, 'код не вернулся в это окно за 2 минуты'); } }, 120000);
+  }
+
+  async function exchange(code, pending, via) {
+    record('auth', 'return', 'Возврат после входа', true, `начали: ${pending.startedIn.toLowerCase()}, вернулись: ${ctxLabel.toLowerCase()}${via ? `, ${via}` : ''}`);
+    try {
+      const res = await fetch('https://oauth.yandex.ru/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ grant_type: 'authorization_code', code, client_id: pending.clientId, code_verifier: pending.verifier }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.access_token) {
+        saveToken(data.access_token);
+        record('auth', 'pkce', 'Обмен кода на токен без client secret (CORS на oauth.yandex.ru/token)', true, `токен получен, живёт ≈ ${Math.round((data.expires_in || 0) / 86400)} дн., refresh_token ${data.refresh_token ? 'есть' : 'нет'}`);
+      } else {
+        record('auth', 'pkce', 'Обмен кода на токен', false, `ответ ${res.status}: ${[data.error, data.error_description].filter(Boolean).join(' — ') || 'без описания'}`);
+      }
+    } catch {
+      record('auth', 'pkce', 'Обмен кода на токен', false, 'ответ не дошёл до страницы: вероятно, на oauth.yandex.ru/token нет CORS');
+    } finally {
+      ls.del(KEY_PENDING);
+      ss.del(KEY_PENDING);
+      render();
+    }
+  }
+
+  async function handleReturn() {
+    const q = new URLSearchParams(location.search);
+    const h = new URLSearchParams(location.hash.slice(1));
+    const state = q.get('state') || h.get('state');
+    if (!state) return;
+    history.replaceState(null, '', location.pathname);
+    const error = q.get('error') || h.get('error');
+    // Мы — окно входа: передаём результат главному окну и закрываемся
+    if (state.startsWith('p.') && (q.get('code') !== null || error)) {
+      const data = { type: 'ketsal-oauth', state, code: q.get('code'), error };
+      ls.set(KEY_POPUP, data);
+      try { if (window.opener) window.opener.postMessage(data, location.origin); } catch { /* окно без связи с главным */ }
+      document.body.innerHTML = '<main><h1>Вход выполнен</h1><p class="hint">Это окно можно закрыть и вернуться к проверкам.</p></main>';
+      setTimeout(() => window.close(), 600);
+      return 'popup';
+    }
+    const pending = ss.get(KEY_PENDING) || ls.get(KEY_PENDING, null);
+    if (error) {
+      record('auth', state[0] === 'i' ? 'implicit' : 'pkce', 'Вход через Яндекс', false, `Яндекс вернул ошибку: ${error} ${q.get('error_description') || h.get('error_description') || ''}`.trim());
+      return 'error';
+    }
+    if (!pending || pending.state !== state) {
+      record('auth', 'return', 'Возврат после входа', false, `вернулись (${ctxLabel.toLowerCase()}), но данных начала входа здесь нет: вход начинали в другом окне или режиме`);
+      return 'lost';
+    }
+    if (h.get('access_token')) {
+      saveToken(h.get('access_token'));
+      record('auth', 'return', 'Возврат после входа', true, `начали: ${pending.startedIn.toLowerCase()}, вернулись: ${ctxLabel.toLowerCase()}`);
+      record('auth', 'implicit', 'Вход «токен сразу» (без запроса к oauth.yandex.ru/token)', true, `токен получен, живёт ≈ ${Math.round((Number(h.get('expires_in')) || 0) / 86400)} дн.`);
+      ls.del(KEY_PENDING);
+      ss.del(KEY_PENDING);
+      return 'implicit';
+    }
+    if (q.get('code')) {
+      await exchange(q.get('code'), pending, '');
+      return 'code';
+    }
+    return null;
+  }
+
+  // ── 3. Яндекс Диск ──
+  function api(path, opts = {}) {
+    return fetch(API + path, { ...opts, headers: { Authorization: `OAuth ${getToken()}`, Accept: 'application/json', ...(opts.headers || {}) } });
+  }
+
+  async function runDisk() {
+    if (!getToken()) { record('disk', 'token', 'Вход', false, 'сначала войдите в разделе 2'); return; }
+    const path = 'app:/ketsal-check-5mb.bin';
+    const hosts = new Set(['cloud-api.yandex.net']);
+    try {
+      const r = await api(`/resources?path=${encodeURIComponent('app:/')}&limit=20`);
+      record('disk', 'list', 'Список папки приложения (CORS на cloud-api.yandex.net)', r.ok || r.status === 404, `ответ ${r.status}${r.status === 404 ? ': папки ещё нет, это нормально' : ''}${r.status === 401 ? ': токен не принят' : ''}`);
+      if (r.status === 401 || r.status === 403) return;
+    } catch {
+      record('disk', 'list', 'Список папки приложения', false, 'ответ не дошёл до страницы: вероятно, на cloud-api.yandex.net нет CORS');
+      return;
+    }
+    const data = randomBytes(5 * 1024 * 1024);
+    const sum = await sha256hex(data);
+    try {
+      const r = await api(`/resources/upload?path=${encodeURIComponent(path)}&overwrite=true`);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.href) { record('disk', 'upload', 'Загрузка 5 МБ', false, `ссылка не выдана: ответ ${r.status} ${j.error || ''}`); return; }
+      const host = new URL(j.href).host;
+      hosts.add(host);
+      const t0 = performance.now();
+      try {
+        const put = await fetch(j.href, { method: j.method || 'PUT', body: data });
+        record('disk', 'upload', 'Загрузка 5 МБ по ссылке Диска (CORS)', put.ok, `ответ ${put.status}, ${Math.round(performance.now() - t0)} мс, хост ${host}`);
+        if (!put.ok) return;
+      } catch {
+        record('disk', 'upload', 'Загрузка 5 МБ по ссылке Диска', false, `ответ от ${host} не дошёл до страницы: вероятно, нет CORS — нужен прокси`);
+        return;
+      }
+    } catch (e) { record('disk', 'upload', 'Загрузка 5 МБ', false, errText(e)); return; }
+    try {
+      let j = null;
+      let status = 0;
+      for (let i = 0; i < 6 && !j; i += 1) {
+        const r = await api(`/resources/download?path=${encodeURIComponent(path)}`);
+        status = r.status;
+        if (r.ok) j = await r.json(); else await sleep(1000);
+      }
+      if (!j || !j.href) record('disk', 'download', 'Скачивание', false, `ссылка не выдана: ответ ${status}`);
+      else {
+        const host = new URL(j.href).host;
+        hosts.add(host);
+        const t0 = performance.now();
+        try {
+          const g = await fetch(j.href);
+          const finalHost = new URL(g.url).host;
+          hosts.add(finalHost);
+          const same = (await sha256hex(new Uint8Array(await g.arrayBuffer()))) === sum;
+          record('disk', 'download', 'Скачивание по ссылке Диска и сверка (CORS)', g.ok && same, `ответ ${g.status}, ${Math.round(performance.now() - t0)} мс, ${same ? 'байты совпали' : 'байты НЕ совпали'}, хост ${host}${finalHost !== host ? ` → ${finalHost}` : ''}`);
+        } catch {
+          record('disk', 'download', 'Скачивание по ссылке Диска', false, `ответ от ${host} не дошёл до страницы: вероятно, нет CORS — нужен прокси`);
+        }
+      }
+    } catch (e) { record('disk', 'download', 'Скачивание', false, errText(e)); }
+    try {
+      const r = await api(`/resources?path=${encodeURIComponent(path)}&permanently=true`, { method: 'DELETE' });
+      record('disk', 'delete', 'Удаление файла', r.status === 204 || r.status === 202, `ответ ${r.status}`);
+    } catch (e) { record('disk', 'delete', 'Удаление файла', false, errText(e)); }
+    record('disk', 'hosts', 'Хосты для CSP (connect-src)', null, Array.from(hosts).join(', '));
+  }
+
+  // ── Запуск ──
+  $('#env').textContent = `${ctxLabel}. ${window.isSecureContext ? 'HTTPS есть.' : 'Нет HTTPS: часть проверок не сработает.'}`;
+  $('#redirect').textContent = redirectUri;
+  $('#client-id').value = ls.get(KEY_CLIENT, '') || '';
+  $('#client-id').addEventListener('input', () => ls.set(KEY_CLIENT, clientId()));
+  $('#btn-device').addEventListener('click', () => runDevice());
+  $('#photo').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) photoTest(f); e.target.value = ''; });
+  $('#btn-share').addEventListener('click', () => shareTest());
+  $('#btn-prf').addEventListener('click', () => prfTest());
+  $('#btn-pkce').addEventListener('click', () => startLogin('redirect'));
+  $('#btn-implicit').addEventListener('click', () => startLogin('implicit'));
+  $('#btn-popup').addEventListener('click', () => startLogin('popup'));
+  $('#btn-logout').addEventListener('click', () => { ss.del(KEY_TOKEN); record('auth', 'logout', 'Выход', null, 'токен удалён из этой вкладки'); });
+  $('#btn-disk').addEventListener('click', () => runDisk());
+  $('#btn-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('#report').value); $('#btn-copy').textContent = 'Скопировано'; }
+    catch { $('#report').select(); $('#btn-copy').textContent = 'Выделено — скопируйте вручную'; }
+    setTimeout(() => { $('#btn-copy').textContent = 'Скопировать отчёт'; }, 2500);
+  });
+  $('#btn-clear').addEventListener('click', () => { for (const k of Object.keys(results)) delete results[k]; ls.set(KEY_RESULTS, results); render(); });
+  const outcome = await handleReturn();
+  if (outcome !== 'popup') render();
+</script>
+</body>
+</html>

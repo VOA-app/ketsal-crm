@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Кетсаль">
+<meta name="theme-color" content="#F7F4F0">
+<meta name="description" content="Заглушка приложения для учёта клиентов студии красоты «Кетсаль»: карты клиентов, процедуры, напоминания о коррекции.">
+<title>Кетсаль — учёт клиентов</title>
+<link rel="icon" type="image/svg+xml" href="@FAVICON@">
+<style>
+/*@FONTS@*/
+/*@CSS@*/
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="device" id="device">
+    <div id="app">
+      <div id="screen"></div>
+      <nav id="tabbar" aria-label="Разделы"></nav>
+      <div id="overlays"></div>
+      <div id="viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото"></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <div id="onb" role="dialog" aria-modal="true" aria-label="Первый запуск"></div>
+      <div id="lock" role="dialog" aria-modal="true" aria-label="Вход"></div>
+    </div>
+  </div>
+  <aside class="guide-panel" id="guide-panel" aria-label="Сценарии для проверки"></aside>
+</div>
+<div id="print-root" aria-label="Карта клиента для печати"></div>
+<input type="file" id="file-input" accept="image/*" multiple hidden>
+<input type="file" id="restore-input" accept=".json,application/json" hidden>
+<script>
+/*@JS@*/
+</script>
+</body>
+</html>
