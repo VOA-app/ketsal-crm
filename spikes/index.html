@@ -496,7 +496,17 @@
           const same = (await sha256hex(new Uint8Array(await g.arrayBuffer()))) === sum;
           record('disk', 'download', 'Скачивание по ссылке Диска и сверка (CORS)', g.ok && same, `ответ ${g.status}, ${Math.round(performance.now() - t0)} мс, ${same ? 'байты совпали' : 'байты НЕ совпали'}, хост ${host}${finalHost !== host ? ` → ${finalHost}` : ''}`);
         } catch {
-          record('disk', 'download', 'Скачивание по ссылке Диска', false, `ответ от ${host} не дошёл до страницы: вероятно, нет CORS — нужен прокси`);
+          // Где рвётся CORS: на самой ссылке или на хосте, куда она перенаправляет.
+          let why;
+          try {
+            const m = await fetch(j.href, { redirect: 'manual' });
+            why = m.type === 'opaqueredirect'
+              ? `${host} разрешает CORS, но перенаправляет на другой хост, где CORS нет (его адрес — в консоли F12)`
+              : `${host} отвечает ${m.status} без перенаправления, но тело не читается`;
+          } catch {
+            why = `у ответа ${host} нет CORS (подробности — в консоли F12)`;
+          }
+          record('disk', 'download', 'Скачивание по ссылке Диска', false, `ответ не дошёл до страницы: ${why}`);
         }
       }
     } catch (e) { record('disk', 'download', 'Скачивание', false, errText(e)); }
