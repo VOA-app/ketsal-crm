@@ -6,7 +6,6 @@ import { fmtMoney } from '../../i18n/format';
 import { ru } from '../../i18n/ru';
 import { Icon, type IconName } from '../components/Icon';
 import { useData } from '../store';
-import { DEV_PLAINTEXT } from '../../db/local';
 
 const M = ru.more;
 
@@ -53,15 +52,13 @@ export function More() {
           <MenuItem icon="gift" title={M.certs} sub={M.certsSub(active)} to="/more/certificates" />
           <MenuItem icon="sliders" title={M.settings} sub={M.settingsSub} to="/more/settings" />
         </div>
-        <div className="about">
-          {M.about(`${__APP_VERSION__}${__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : ''}`)}
-          {DEV_PLAINTEXT && (
-            <>
-              <br />
-              {M.devNote}
-            </>
-          )}
+        <div className="menu">
+          <button type="button" className="menu-item" onClick={() => useData.getState().lock()}>
+            <Icon name="lock" />
+            <span className="t">{ru.lock.lockNow}</span>
+          </button>
         </div>
+        <div className="about">{M.about(`${__APP_VERSION__}${__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : ''}`)}</div>
       </div>
     </div>
   );

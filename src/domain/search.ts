@@ -48,3 +48,7 @@ export const fullName = (c: Client): string => [c.firstName, c.lastName].filter(
 export const formalName = (c: Client): string => [c.lastName, c.firstName, c.middleName].filter(Boolean).join(' ');
 export const initials = (c: Client): string =>
   `${(c.firstName || '')[0] || ''}${(c.lastName || '')[0] || ''}`.toUpperCase() || '·';
+
+/** Номер для новой карты: счётчик из настроек, но не меньше «самый большой номер + 1». */
+export const nextCardNo = (data: { settings: { nextCardNo: number }; clients: { cardNo: number }[] }): number =>
+  Math.max(data.settings.nextCardNo, ...data.clients.map((c) => c.cardNo + 1), 1);

@@ -5,7 +5,7 @@ import { CLIENT_VIEWS, type ClientView } from '../../domain/constants';
 import type { CorrItem, ClientInfo, UpdItem } from '../../domain/client';
 import { daysBetween } from '../../domain/dates';
 import { recentlyReminded, remindedAt, viewItems, type ViewItem } from '../../domain/reminders';
-import { fullName, searchClients } from '../../domain/search';
+import { fullName, nextCardNo, searchClients } from '../../domain/search';
 import { lc } from '../../domain/text';
 import type { Client, Entity } from '../../domain/types';
 import { fmtDate, fmtDateShort, relDay } from '../../i18n/format';
@@ -171,7 +171,7 @@ function ClientList() {
 
   if (!idx.data.clients.length) {
     return (
-      <Empty title={R.emptyTitle} text={R.emptyText(settings.nextCardNo)}>
+      <Empty title={R.emptyTitle} text={R.emptyText(nextCardNo(idx.data))}>
         <button type="button" className="btn btn-primary" onClick={() => openClientForm({})}>
           <Icon name="plus" /> {R.newCard}
         </button>
@@ -246,6 +246,11 @@ export function Clients() {
       <header className="topbar">
         <div className="topbar-row">
           <h1 className="display title-lg">{R.title}</h1>
+          <div className="topbar-actions">
+            <button type="button" className="icon-btn" aria-label={R.lock} onClick={() => useData.getState().lock()}>
+              <Icon name="lock" />
+            </button>
+          </div>
         </div>
         <SearchBox
           value={clientSearch}

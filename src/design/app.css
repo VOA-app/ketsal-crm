@@ -298,3 +298,32 @@
 .hbar-top .num {
   flex: none;
 }
+
+/* ── Вход и первый запуск ── */
+.lock-pass {
+  margin-top: 36px;
+}
+.lock-pass .lock-sub {
+  margin: 0 0 6px;
+}
+.lock-pass .strength {
+  margin: -6px 0 6px;
+}
+.text-center {
+  text-align: center;
+}
+.recovery-input {
+  min-height: 96px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.onb-bird {
+  z-index: 0;
+}
+.onb-top,
+.onb-body,
+.onb-foot {
+  position: relative;
+  z-index: 1;
+}

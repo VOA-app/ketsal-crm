@@ -7,6 +7,9 @@ import { Empty, ToastHost } from './components/kit';
 import { Viewer } from './components/Photo';
 import { SheetHost, dismissSheet } from './components/Sheet';
 import { PrintCard } from './screens/PrintCard';
+import { Lock } from './screens/Lock';
+import { Onboarding } from './screens/Onboarding';
+import { watchIdle } from './idle';
 import { ClientCard } from './screens/ClientCard';
 import { Clients } from './screens/Clients';
 import { Certificates } from './screens/Certificates';
@@ -100,9 +103,20 @@ function useCloseOverlaysOnNavigate() {
   }, [loc.pathname]);
 }
 
+/** Автоблокировка по бездействию и при уходе в фон (SPEC §5.4). */
+function useAutoLock() {
+  const status = useData((s) => s.status);
+  const minutes = useData((s) => s.data.settings.autoLockMinutes);
+  useEffect(() => {
+    if (status !== 'ready') return;
+    return watchIdle(minutes, () => useData.getState().lock());
+  }, [status, minutes]);
+}
+
 function Shell() {
   const status = useData((s) => s.status);
   useTheme();
+  useAutoLock();
   useEscape();
   useCloseOverlaysOnNavigate();
   useEffect(() => {
@@ -113,6 +127,14 @@ function Shell() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
   if (status === 'loading') return <div className="app" />;
+  if (status === 'onboarding' || status === 'locked') {
+    return (
+      <div className="app">
+        {status === 'onboarding' ? <Onboarding /> : <Lock />}
+        <ToastHost />
+      </div>
+    );
+  }
   if (status === 'error') {
     return (
       <div className="app">
@@ -149,7 +171,7 @@ function Shell() {
 
 export function App() {
   useEffect(() => {
-    void useData.getState().load();
+    void useData.getState().init();
   }, []);
   return (
     <HashRouter>

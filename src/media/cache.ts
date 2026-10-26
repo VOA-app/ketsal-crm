@@ -74,8 +74,8 @@ export async function savePhotos(files: File[], maxSide: number): Promise<{ refs
     try {
       const p = await processPhoto(f, maxSide);
       await putBlobs([
-        { id: p.ref.blobId, blob: p.full },
-        { id: p.ref.thumbId, blob: p.thumb },
+        { id: p.ref.blobId, blob: p.full, kind: 'photo' },
+        { id: p.ref.thumbId, blob: p.thumb, kind: 'thumb' },
       ]);
       refs.push(p.ref);
     } catch {

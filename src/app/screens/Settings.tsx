@@ -8,7 +8,7 @@ import type { Lists, Settings as SettingsT, TemplateId } from '../../domain/type
 import { clearBlobs } from '../../db/repo';
 import { TEMPLATE, ru } from '../../i18n/ru';
 import { Icon } from '../components/Icon';
-import { NavBar, Seg } from '../components/kit';
+import { Chip, NavBar, Seg } from '../components/kit';
 import { DEMO_ENABLED, useData } from '../store';
 import { ui } from '../ui';
 
@@ -125,6 +125,7 @@ function ListEditor({ k, label }: { k: keyof Lists; label: string }) {
 export function Settings() {
   const navigate = useNavigate();
   const theme = useData((s) => s.data.settings.theme);
+  const autoLock = useData((s) => s.data.settings.autoLockMinutes);
 
   const demoReset = async () => {
     const ok = await ui().confirm({ title: S.demoResetTitle, text: S.demoResetText, ok: S.demoResetOk, danger: false });
@@ -178,6 +179,23 @@ export function Settings() {
           <NumSetting k="updFrom" />
           <NumSetting k="updTo" />
           <NumSetting k="lostAfter" />
+        </div>
+        <div className="section-title">{S.security}</div>
+        <div className="card">
+          <div className="field mb-0">
+            <span className="field-label">{S.autoLock}</span>
+            <div className="chips">
+              {[1, 5, 15, 30, 0].map((m) => (
+                <Chip
+                  key={m}
+                  label={m ? S.autoLockMin(m) : S.autoLockOff}
+                  on={autoLock === m}
+                  onClick={() => useData.getState().apply((tx) => tx.settings({ autoLockMinutes: m }))}
+                />
+              ))}
+            </div>
+            <p className="hint mt-8 mb-0">{S.autoLockHint}</p>
+          </div>
         </div>
         <div className="section-title">{S.theme}</div>
         <Seg

@@ -30,6 +30,6 @@ export default tseslint.config(
     rules: { 'react-refresh/only-export-components': 'off' },
   },
   { files: ['src/sync/**/*Adapter*.ts', 'src/auth/**/*.ts'], rules: { 'no-restricted-globals': 'off' } },
-  { files: ['src/crypto/**/*.ts'], rules: { 'no-restricted-properties': 'off' } },
+  { files: ['src/crypto/**/*.ts', 'tests/**/*.ts'], rules: { 'no-restricted-properties': 'off' } },
   { files: ['*.config.ts', 'tests/**/*.ts'], languageOptions: { globals: globals.node } },
 );

@@ -6,7 +6,7 @@ import { fmtPhone, normPhone, phoneQueryDigits } from '../../src/domain/phone';
 import { defaultLot, newProcDraft, repeatDraft } from '../../src/domain/procedures';
 import { recentlyReminded, urgentCount, viewItems, withReminded } from '../../src/domain/reminders';
 import { monthlySeries, reportData } from '../../src/domain/reports';
-import { findByPhone, searchClients } from '../../src/domain/search';
+import { findByPhone, nextCardNo, searchClients } from '../../src/domain/search';
 import { availableCerts, certStatus, relinkCertificates } from '../../src/domain/certificates';
 import { fillTemplate } from '../../src/domain/templates';
 import { hasDanger, procWarnings } from '../../src/domain/warnings';
@@ -81,6 +81,17 @@ describe('телефоны и поиск', () => {
     expect(searchClients(idx, '12')).toEqual([]);
     expect(findByPhone(idx, '8 (917) 104-45-67')?.id).toBe(a.id);
     expect(findByPhone(idx, '8 (917) 104-45-67', a.id)).toBeNull();
+  });
+});
+
+describe('номер новой карты', () => {
+  it('не меньше самого большого номера + 1', () => {
+    const D = baseData();
+    expect(nextCardNo(D)).toBe(1);
+    client(D, { cardNo: 7 });
+    expect(nextCardNo(D)).toBe(8);
+    D.settings.nextCardNo = 20;
+    expect(nextCardNo(D)).toBe(20);
   });
 });
 

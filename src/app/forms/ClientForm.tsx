@@ -5,7 +5,7 @@ import { CONTACT_KINDS } from '../../domain/constants';
 import { todayISO } from '../../domain/dates';
 import { ulid } from '../../domain/ids';
 import { fmtPhone, normPhone } from '../../domain/phone';
-import { findByPhone, fullName } from '../../domain/search';
+import { findByPhone, fullName, nextCardNo } from '../../domain/search';
 import { cap } from '../../domain/text';
 import type { Client, Entity, PhotoRef } from '../../domain/types';
 import { CONTACT, ru } from '../../i18n/ru';
@@ -124,7 +124,7 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
         }
       : {
           id: null,
-          cardNo: String(data.settings.nextCardNo),
+          cardNo: String(nextCardNo(data)),
           lastName: '',
           firstName: '',
           middleName: '',
