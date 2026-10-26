@@ -11,6 +11,7 @@ import type { Client, Entity } from '../../domain/types';
 import { fmtDate, fmtDateShort, relDay } from '../../i18n/format';
 import { VISIT_TYPE, ru } from '../../i18n/ru';
 import { Avatar } from '../components/ClientBits';
+import { SyncButton } from '../components/SyncCard';
 import { Icon } from '../components/Icon';
 import { Empty, Fab, ScrollChips, SearchBox } from '../components/kit';
 import { actionSheet } from '../components/Sheet';
@@ -247,6 +248,7 @@ export function Clients() {
         <div className="topbar-row">
           <h1 className="display title-lg">{R.title}</h1>
           <div className="topbar-actions">
+            <SyncButton />
             <button type="button" className="icon-btn" aria-label={R.lock} onClick={() => useData.getState().lock()}>
               <Icon name="lock" />
             </button>

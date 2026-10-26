@@ -1,6 +1,7 @@
 // Карточка процедуры: материалы, фото трёх стадий с быстрым добавлением, заживление, оплата.
 import { useNavigate, useParams } from 'react-router';
 import { relinkCertificates } from '../../domain/certificates';
+import { ulid } from '../../domain/ids';
 import { PHOTO_STAGES } from '../../domain/constants';
 import { repeatDraft } from '../../domain/procedures';
 import { lotInfo } from '../../domain/procedures';
@@ -105,9 +106,11 @@ export function ProcedureView() {
       action: V.undo,
       onAction: () => {
         restored = true;
+        // Удаление окончательно и могло уже уйти на Диск: возвращаем копию под новым id
+        const back = { ...snapshot, id: ulid() };
         useData.getState().apply((tx) => {
-          tx.put('procedures', snapshot);
-          for (const x of certsBefore) tx.put('certificates', x);
+          tx.put('procedures', back);
+          for (const x of certsBefore) tx.put('certificates', { ...x, usedProcId: back.id });
         });
         ui().toast(V.restored);
       },

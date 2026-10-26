@@ -411,11 +411,11 @@ export function ClientCard() {
       // Фото клиентки и её процедур стираются физически; сертификат остаётся использованным
       const blobIds = allBlobIds({ ...tx.data, clients: [c], procedures: procs });
       for (const p of procs) {
-        tx.del('procedures', p.id);
+        tx.purge('procedures', p.id);
         for (const cert of tx.data.certificates)
           if (cert.usedProcId === p.id) tx.put('certificates', { ...cert, usedProcId: 'deleted' });
       }
-      tx.del('clients', c.id);
+      tx.purge('clients', c.id);
       tx.dropBlobs(blobIds);
     });
     ui().closeAllSheets();

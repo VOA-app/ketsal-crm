@@ -10,6 +10,7 @@ import { endSession, startSession } from '../crypto/session';
 import {
   createVault,
   setPassword,
+  type VaultHeader,
   unlockWithPassword,
   unlockWithRecovery,
   WrongSecretError,
@@ -18,10 +19,12 @@ import {
 import { ulid } from '../domain/ids';
 import {
   clearLegacy,
+  currentData,
   deleteBlobs,
   forgetDecrypted,
   getVaultHeader,
   hasLegacyData,
+  initEmpty,
   loadData,
   loadLegacyData,
   putBlobs,
@@ -32,6 +35,9 @@ import {
   type Change,
 } from '../db/repo';
 import { revokeAll } from '../media/cache';
+import { completeLogin } from '../auth/yandex-oauth';
+import { enableDevRemote, failureOf, isConnected, remoteHeader, saveToken } from '../sync/service';
+import { setOnSyncChanged, stopSync, syncNow, syncSoon, useSync } from './sync';
 import { ru } from '../i18n/ru';
 import { useUi } from './ui';
 
@@ -43,6 +49,8 @@ export interface Tx {
   readonly data: Data;
   put<C extends Coll>(coll: C, item: Item<C>): void;
   del(coll: Coll, id: string): void;
+  /** Полное удаление (§1.3): запись исчезнет и на других устройствах, правки её не вернут */
+  purge(coll: Coll, id: string): void;
   settings(patch: Partial<Settings>): void;
   lists(patch: Partial<Lists>): void;
   /** Фото, которые надо стереть с устройства после сохранения */
@@ -56,6 +64,10 @@ interface DataState {
   idx: DomainIndex;
   unlockedAt: number;
   init(): Promise<void>;
+  /** Онбординг после входа в Яндекс: есть ли хранилище на Диске */
+  remoteCheck(): Promise<RemoteCheck>;
+  /** Второе устройство: открыть хранилище с Диска мастер-паролем */
+  joinVault(password: string): Promise<UnlockResult>;
   /** Онбординг: создать хранилище в памяти и вернуть ключ восстановления (на устройство пишет finishVault) */
   prepareVault(password: string): Promise<string>;
   finishVault(choice: StartChoice): Promise<void>;
@@ -103,6 +115,13 @@ function makeTx(base: Data) {
       change.puts = change.puts.filter((p) => p.item.id !== id);
       change.dels.push(id);
     },
+    purge(coll, id) {
+      const arr = own(coll);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i >= 0) arr.splice(i, 1);
+      change.puts = change.puts.filter((p) => p.item.id !== id);
+      (change.purges ??= []).push(id);
+    },
     settings(patch) {
       data.settings = { ...data.settings, ...patch };
       change.settings = data.settings;
@@ -128,6 +147,12 @@ export type UnlockResult = 'ok' | 'wrong' | 'error';
 
 export type StartChoice = 'empty' | 'demo';
 
+/** create — на Диске пусто, создаём; join — там уже есть хранилище; off — Диск не подключён */
+export type RemoteCheck = 'create' | 'join' | 'off' | 'offline' | 'auth' | 'error';
+
+/** Заголовок хранилища с Диска, найденный в онбординге второго устройства. */
+let remoteVault: VaultHeader | null = null;
+
 /** Хранилище, созданное в онбординге, но ещё не записанное: ждёт проверки ключа восстановления. */
 let pending: CreatedVault | null = null;
 
@@ -144,7 +169,16 @@ export const useData = create<DataState>((set, get) => {
     const today = todayISO();
     const data = await loadData(today);
     set({ status: 'ready', data, idx: buildIndex(data, today), unlockedAt: Date.now() });
+    void syncNow();
   }
+
+  // Синхронизация принесла изменения — показать их
+  setOnSyncChanged(() => {
+    if (get().status !== 'ready') return;
+    const today = todayISO();
+    const data = currentData(today);
+    set({ data, idx: buildIndex(data, today) });
+  });
 
   return {
     status: 'loading',
@@ -155,11 +189,52 @@ export const useData = create<DataState>((set, get) => {
     async init() {
       try {
         void requestPersist();
+        if (DEMO_ENABLED && import.meta.env.VITE_DEV_REMOTE === '1') enableDevRemote();
+        // Вернулись со страницы входа Яндекса: обменять код на токен
+        const login = await completeLogin();
+        if (login && 'token' in login) await saveToken(login.token);
+        else if (login && 'error' in login) setTimeout(() => useUi.getState().toast(ru.sync.loginFailed), 300);
         const header = await getVaultHeader();
+        await useSync.getState().refresh();
         set({ status: header ? 'locked' : 'onboarding' });
       } catch (e) {
         console.error(e instanceof Error ? e.name : 'init error');
         set({ status: 'error' });
+      }
+    },
+
+    async remoteCheck() {
+      if (!(await isConnected())) return 'off';
+      try {
+        remoteVault = await remoteHeader();
+        return remoteVault ? 'join' : 'create';
+      } catch (e) {
+        const f = failureOf(e);
+        return f === 'offline' || f === 'auth' ? f : 'error';
+      }
+    },
+
+    async joinVault(password) {
+      const header = remoteVault;
+      if (!header) return 'error';
+      try {
+        const dek = await unlockWithPassword(header, password);
+        startSession({ dek, vaultId: header.vaultId });
+        await initEmpty();
+        await saveVaultHeader(header);
+        const today = todayISO();
+        set({
+          status: 'ready',
+          data: currentData(today),
+          idx: buildIndex(currentData(today), today),
+          unlockedAt: Date.now(),
+        });
+        await syncNow();
+        return 'ok';
+      } catch (e) {
+        if (e instanceof WrongSecretError) return 'wrong';
+        console.error(e instanceof Error ? e.name : 'join error');
+        return 'error';
       }
     },
 
@@ -185,6 +260,7 @@ export const useData = create<DataState>((set, get) => {
       await saveVaultHeader(v.header);
       if (legacy) await clearLegacy();
       set({ status: 'ready', data, idx: buildIndex(data, today), unlockedAt: Date.now() });
+      void syncNow();
     },
 
     cancelVault() {
@@ -239,6 +315,7 @@ export const useData = create<DataState>((set, get) => {
     lock() {
       if (get().status !== 'ready') return;
       // Ключ и расшифрованные данные — из памяти; несохранённые формы не восстанавливаются
+      stopSync();
       endSession();
       forgetDecrypted();
       revokeAll();
@@ -257,6 +334,7 @@ export const useData = create<DataState>((set, get) => {
       set({ data, idx: buildIndex(data, todayISO()) });
       writeChange(change)
         .then(() => deleteBlobs(blobs))
+        .then(syncSoon)
         .catch(saveFailed);
     },
 

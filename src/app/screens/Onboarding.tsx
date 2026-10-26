@@ -1,16 +1,17 @@
-// Первый запуск (SPEC §10.3): приветствие → мастер-пароль → ключ восстановления → проверка 4 символов → готово.
-// Подключение Яндекс Диска появится в онбординге на этапе 3, быстрый вход — на этапе 6.
-import { useEffect, useMemo, useState } from 'react';
+// Первый запуск (SPEC §10.3): приветствие → вход через Яндекс → мастер-пароль → ключ восстановления →
+// проверка 4 символов → готово. Если на Диске уже есть хранилище — мастер-пароль и первая синхронизация.
+// Быстрый вход (Face ID, код) появится на этапе 6.
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { MIN_STRENGTH, passwordStrength } from '../../domain/password';
 import { ru } from '../../i18n/ru';
 import { Bird, Logo } from '../components/Brand';
 import { Icon } from '../components/Icon';
 import { Check, Field } from '../components/kit';
-import { DEMO_ENABLED, useData, type StartChoice } from '../store';
+import { DEMO_ENABLED, useData, type RemoteCheck, type StartChoice } from '../store';
+import { connectYandex } from '../sync';
 import { ui } from '../ui';
 
 const O = ru.onb;
-const STEPS = 5;
 
 /** Пароль, повтор и индикатор надёжности — общий для онбординга и сброса пароля. */
 export function PasswordFields({
@@ -92,9 +93,18 @@ function pickPositions(n: number, max: number): number[] {
   return Array.from(pos).sort((a, b) => a - b);
 }
 
+type Phase = 'welcome' | 'yandex' | 'password' | 'key' | 'verify' | 'done' | 'join';
+
+/** Шаги для полоски прогресса: создание хранилища и подключение второго устройства. */
+const CREATE: Phase[] = ['welcome', 'yandex', 'password', 'key', 'verify', 'done'];
+const JOIN: Phase[] = ['welcome', 'yandex', 'join'];
+
 export function Onboarding() {
-  const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState<Phase>('welcome');
+  const [check, setCheck] = useState<RemoteCheck | 'checking' | 'skipped' | null>(null);
   const [pass, setPass] = useState<[string, string]>(['', '']);
+  const [joinPass, setJoinPass] = useState('');
+  const [joinError, setJoinError] = useState('');
   const [key, setKey] = useState('');
   const [keyFor, setKeyFor] = useState('');
   const [saved, setSaved] = useState(false);
@@ -104,22 +114,44 @@ export function Onboarding() {
   const positions = useMemo(() => (key ? pickPositions(4, key.length) : []), [key]);
   const grouped = key.match(/.{1,4}/g) ?? [];
 
+  const runCheck = async () => {
+    setCheck('checking');
+    const r = await useData.getState().remoteCheck();
+    setCheck(r);
+    if (r === 'create') setPhase('password');
+    else if (r === 'join') setPhase('join');
+  };
+
   useEffect(() => {
     void useData.getState().legacyExists().then(setLegacy);
+    // Вернулись от Яндекса (токен уже есть): сразу смотрим, что на Диске
+    void useData
+      .getState()
+      .remoteCheck()
+      .then((r) => {
+        if (r === 'off') return;
+        setCheck(r);
+        if (r === 'create') setPhase('password');
+        else if (r === 'join') setPhase('join');
+        else setPhase('yandex');
+      });
   }, []);
 
+  const steps = phase === 'join' ? JOIN : CREATE;
+  const stepIdx = steps.indexOf(phase);
+
   const canNext =
-    step === 1
+    phase === 'password'
       ? passwordReady(pass) && !busy
-      : step === 2
+      : phase === 'key'
         ? saved
-        : step === 3
+        : phase === 'verify'
           ? positions.every((p, i) => (verify[i] || '').toUpperCase() === key[p])
           : true;
 
   const next = async () => {
     if (!canNext) return;
-    if (step === 1 && keyFor !== pass[0]) {
+    if (phase === 'password' && keyFor !== pass[0]) {
       // Ключи создаются заново, только если пароль поменяли
       setBusy(true);
       try {
@@ -134,7 +166,14 @@ export function Onboarding() {
       }
       setBusy(false);
     }
-    setStep((s) => Math.min(STEPS - 1, s + 1));
+    const i = CREATE.indexOf(phase);
+    setPhase(CREATE[Math.min(CREATE.length - 1, i + 1)]);
+  };
+
+  const back = () => {
+    const i = steps.indexOf(phase);
+    if (phase === 'password' || phase === 'join') setPhase('yandex');
+    else if (i > 0) setPhase(steps[i - 1]);
   };
 
   const finish = async (choice: StartChoice) => {
@@ -147,9 +186,20 @@ export function Onboarding() {
     }
   };
 
+  const join = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!joinPass || busy) return;
+    setBusy(true);
+    setJoinError('');
+    const r = await useData.getState().joinVault(joinPass);
+    setBusy(false);
+    if (r === 'wrong') setJoinError(ru.lock.wrong);
+    else if (r === 'error') setJoinError(O.joinFailed);
+  };
+
   let body;
   let foot;
-  if (step === 0) {
+  if (phase === 'welcome') {
     body = (
       <>
         <div className="onb-logo">
@@ -163,8 +213,8 @@ export function Onboarding() {
             <span>{O.welcomeEncrypted}</span>
           </div>
           <div>
-            <Icon name="shield" />
-            <span>{O.welcomeOffline}</span>
+            <Icon name="cloud" />
+            <span>{O.welcomeCloud}</span>
           </div>
           <div>
             <Icon name="phone" />
@@ -174,11 +224,93 @@ export function Onboarding() {
       </>
     );
     foot = (
-      <button type="button" className="btn btn-primary" onClick={next}>
+      <button type="button" className="btn btn-primary" onClick={() => setPhase('yandex')}>
         {O.start}
       </button>
     );
-  } else if (step === 1) {
+  } else if (phase === 'yandex') {
+    const status =
+      check === 'checking'
+        ? O.yandexChecking
+        : check === 'offline'
+          ? O.yandexOffline
+          : check === 'auth'
+            ? O.yandexAuth
+            : check === 'error'
+              ? O.yandexError
+              : '';
+    body = (
+      <>
+        <h2 className="display">{O.yandexTitle}</h2>
+        <p>{O.yandexText}</p>
+        <div className="onb-list">
+          <div>
+            <Icon name="shield" />
+            <span>{O.yandexFolder}</span>
+          </div>
+          <div>
+            <Icon name="refresh" />
+            <span>{O.yandexSync}</span>
+          </div>
+        </div>
+        {status && <p className="hint">{status}</p>}
+      </>
+    );
+    foot = (
+      <>
+        {check === 'offline' || check === 'error' ? (
+          <button type="button" className="btn btn-primary" onClick={runCheck}>
+            {O.retry}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={check === 'checking'}
+            onClick={() => void connectYandex()}
+          >
+            {O.yandexLogin}
+          </button>
+        )}
+        {DEMO_ENABLED && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              setCheck('skipped');
+              setPhase('password');
+            }}
+          >
+            {O.yandexSkip}
+          </button>
+        )}
+      </>
+    );
+  } else if (phase === 'join') {
+    body = (
+      <>
+        <h2 className="display">{O.joinTitle}</h2>
+        <p>{O.joinText}</p>
+        <form id="join-form" onSubmit={join}>
+          <Field label={ru.lock.password} err={joinError || undefined}>
+            <input
+              className="input"
+              type="password"
+              value={joinPass}
+              autoComplete="current-password"
+              onChange={(e) => setJoinPass(e.target.value)}
+              autoFocus
+            />
+          </Field>
+        </form>
+      </>
+    );
+    foot = (
+      <button type="submit" form="join-form" className="btn btn-primary" disabled={busy || !joinPass}>
+        {busy ? O.joining : ru.lock.unlock}
+      </button>
+    );
+  } else if (phase === 'password') {
     body = (
       <>
         <h2 className="display">{O.passTitle}</h2>
@@ -191,7 +323,7 @@ export function Onboarding() {
         {busy ? O.creating : O.next}
       </button>
     );
-  } else if (step === 2) {
+  } else if (phase === 'key') {
     body = (
       <>
         <h2 className="display">{O.keyTitle}</h2>
@@ -219,7 +351,7 @@ export function Onboarding() {
         {O.next}
       </button>
     );
-  } else if (step === 3) {
+  } else if (phase === 'verify') {
     body = (
       <>
         <h2 className="display">{O.verifyTitle}</h2>
@@ -239,7 +371,7 @@ export function Onboarding() {
             </label>
           ))}
         </div>
-        <button type="button" className="btn-link" onClick={() => setStep(2)}>
+        <button type="button" className="btn-link" onClick={() => setPhase('key')}>
           {O.verifyAgain}
         </button>
       </>
@@ -256,7 +388,7 @@ export function Onboarding() {
           <Logo label="Кетсаль" />
         </div>
         <h2 className="display">{O.doneTitle}</h2>
-        <p>{O.doneText}</p>
+        <p>{check === 'skipped' ? O.doneTextLocal : O.doneText}</p>
         {legacy ? <p>{O.doneLegacy}</p> : DEMO_ENABLED && <p>{O.doneDemo}</p>}
       </>
     );
@@ -283,16 +415,16 @@ export function Onboarding() {
         <Bird />
       </div>
       <div className="onb-top">
-        {step > 0 && step < STEPS - 1 ? (
-          <button type="button" className="icon-btn" aria-label={O.back} onClick={() => setStep(step - 1)}>
+        {stepIdx > 0 && phase !== 'done' ? (
+          <button type="button" className="icon-btn" aria-label={O.back} onClick={back}>
             <Icon name="back" />
           </button>
         ) : (
           <span className="spacer-44" />
         )}
         <div className="steps">
-          {Array.from({ length: STEPS }, (_, i) => (
-            <i key={i} className={i <= step ? 'on' : ''} />
+          {steps.map((s, i) => (
+            <i key={s} className={i <= stepIdx ? 'on' : ''} />
           ))}
         </div>
         <span className="spacer-44" />

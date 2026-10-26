@@ -81,6 +81,7 @@ describe('хранилище на устройстве', () => {
     await loadData(TODAY);
     const before = Object.fromEntries((await db.shards.toArray()).map((r) => [r.id, r.rev]));
     const catBefore = (await db.catalog.get('catalog'))!.rev;
+    const outboxBefore = await db.outbox.count();
     const D = await loadData(TODAY);
     const c = D.clients[0];
     await writeChange({ puts: [{ coll: 'clients', item: { ...c, lastName: 'Новая' } as Entity<object> }], dels: [] });
@@ -88,7 +89,7 @@ describe('хранилище на устройстве', () => {
     const changed = Object.keys(after).filter((k) => after[k] !== before[k]);
     expect(changed).toEqual([shardOf(c.id)]);
     expect((await db.catalog.get('catalog'))!.rev).toBe(catBefore + 1);
-    expect(await db.outbox.count()).toBe(1);
+    expect(await db.outbox.count()).toBe(outboxBefore + 1);
     forgetDecrypted();
     expect((await loadData(TODAY)).clients.find((x) => x.id === c.id)!.lastName).toBe('Новая');
     await writeChange({ puts: [], dels: [c.id] });

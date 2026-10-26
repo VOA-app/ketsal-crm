@@ -6,6 +6,7 @@ import { fmtMoney } from '../../i18n/format';
 import { ru } from '../../i18n/ru';
 import { Icon, type IconName } from '../components/Icon';
 import { useData } from '../store';
+import { SyncCard } from '../components/SyncCard';
 
 const M = ru.more;
 
@@ -39,13 +40,7 @@ export function More() {
         </div>
       </header>
       <div className="scroller">
-        <div className="sync-card">
-          <Icon name="cloud" />
-          <div className="grow">
-            <div className="t">{ru.sync.local}</div>
-            <div className="s">{ru.sync.later}</div>
-          </div>
-        </div>
+        <SyncCard />
         <div className="menu">
           <MenuItem icon="chart" title={M.reports} sub={M.reportsSub} to="/more/reports" />
           <MenuItem icon="box" title={M.expenses} sub={M.expensesSub(fmtMoney(month))} to="/more/expenses" />

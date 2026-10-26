@@ -327,3 +327,31 @@
   position: relative;
   z-index: 1;
 }
+
+/* ── Синхронизация ── */
+.sync-card--alert {
+  background: var(--surface);
+  border: 1px solid var(--alert);
+}
+.sync-btn--syncing .i {
+  animation: sync-pulse 1.2s ease-in-out infinite;
+}
+@keyframes sync-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.sync-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--alert);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sync-btn--syncing .i {
+    animation: none;
+  }
+}
