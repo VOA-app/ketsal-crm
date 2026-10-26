@@ -1,23 +1,25 @@
 // Показ фото: превью в списках, оригинал в просмотре, полноэкранный просмотр и сравнение.
+// Оригинал с другого устройства скачивается при открытии; пока он грузится, видно превью.
 import { useEffect, useRef, useState } from 'react';
+import type { PhotoKind } from '../../domain/photos';
 import type { PhotoRef } from '../../domain/types';
 import { cachedUrl, photoUrl } from '../../media/cache';
 import { ru } from '../../i18n/ru';
 import { useUi, type ViewerItem } from '../ui';
 import { Icon } from './Icon';
 
-export function usePhotoUrl(id: string | undefined): string {
+export function usePhotoUrl(id: string | undefined, kind: PhotoKind): string {
   const [url, setUrl] = useState(() => (id ? (cachedUrl(id) ?? '') : ''));
   useEffect(() => {
     let alive = true;
     if (!id) return;
-    photoUrl(id).then((u) => {
+    photoUrl(id, kind).then((u) => {
       if (alive) setUrl(u);
     });
     return () => {
       alive = false;
     };
-  }, [id]);
+  }, [id, kind]);
   return id ? url : '';
 }
 
@@ -32,7 +34,9 @@ export function PhotoImg({
   alt?: string;
   className?: string;
 }) {
-  const url = usePhotoUrl(full ? photo.blobId : photo.thumbId);
+  const thumb = usePhotoUrl(photo.thumbId, 'thumb');
+  const original = usePhotoUrl(full ? photo.blobId : undefined, 'photo');
+  const url = (full && original) || thumb;
   return url ? (
     <img src={url} alt={alt} className={className} loading="lazy" draggable={false} />
   ) : (

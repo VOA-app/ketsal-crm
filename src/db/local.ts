@@ -3,6 +3,7 @@
 // Версия 1 (этап 1) хранила записи открытым текстом в таблицах dev*. Версия 2 добавила
 // шифрованные таблицы; dev* остаются только чтобы при создании хранилища перенести старые
 // данные и сразу их стереть. Следующая версия схемы удалит dev* совсем.
+// Версия 3 (этап 4) добавила очереди фото: загрузка на Диск и удаление с Диска.
 import Dexie, { type Table } from 'dexie';
 import type { Kind } from './kinds';
 
@@ -44,7 +45,22 @@ export interface BlobRow {
   id: string;
   kind: 'photo' | 'thumb';
   ct: Uint8Array;
+  /** Файл есть на Диске (загружен этим устройством или скачан оттуда) */
   synced: boolean;
+  /** Когда файл появился на устройстве, мс. У строк до этапа 4 нет */
+  at?: number;
+}
+
+/** Фото этого устройства, которое ещё не загружено на Диск. */
+export interface PhotoUpRow {
+  id: string;
+  at: number;
+}
+
+/** Файл, который надо удалить с Диска (фото убрали из карты или процедуры). */
+export interface PhotoDelRow {
+  id: string;
+  kind: 'photo' | 'thumb';
 }
 
 export interface OutboxRow {
@@ -61,6 +77,8 @@ export class KetsalDB extends Dexie {
   catalog!: Table<CatalogRow, string>;
   blobs!: Table<BlobRow, string>;
   outbox!: Table<OutboxRow, number>;
+  photoUp!: Table<PhotoUpRow, string>;
+  photoDel!: Table<PhotoDelRow, string>;
 
   constructor(name = 'ketsal') {
     super(name);
@@ -76,6 +94,16 @@ export class KetsalDB extends Dexie {
       blobs: 'id, synced',
       outbox: '++seq',
     });
+    // Индекс по synced не работал: в IndexedDB булевы значения не индексируются. Очередь — отдельная таблица
+    this.version(3)
+      .stores({ blobs: 'id', photoUp: 'id', photoDel: 'id' })
+      .upgrade(async (tx) => {
+        const up: PhotoUpRow[] = [];
+        await tx.table<BlobRow, string>('blobs').each((b) => {
+          if (!b.synced) up.push({ id: b.id, at: b.at ?? 0 });
+        });
+        await tx.table<PhotoUpRow, string>('photoUp').bulkPut(up);
+      });
   }
 }
 

@@ -213,12 +213,13 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
       notes: d.notes.trim(),
       consents: { ...d.consents, health: src?.consents?.health ?? { date: '' } },
     } as Entity<Client>;
-    const removed = photos.removedIds();
+    const removed = photos.removedRefs();
     useData.getState().apply((tx) => {
       tx.put('clients', rec);
       tx.settings({ nextCardNo: Math.max(tx.data.settings.nextCardNo, no + 1) });
-      tx.dropBlobs(removed);
+      tx.dropPhotos(removed);
     });
+    photos.commit();
     sheet.close();
     if (src) ui().toast(F.saved);
     else {

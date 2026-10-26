@@ -34,8 +34,14 @@ export function syncText(state: SyncState, at: string): string {
 
 const isAlert = (s: SyncState) => s === 'rollback' || s === 'otherVault' || s === 'corrupt';
 
+/** Строка состояния и, если есть, сколько фото ждут загрузки. */
+function statusLine(state: SyncState, at: string, photosLeft: number) {
+  const t = syncText(state, at);
+  return photosLeft > 0 && state !== 'off' ? `${t} · ${S.photosLeft(photosLeft)}` : t;
+}
+
 function SyncSheet() {
-  const { state, at } = useSync();
+  const { state, at, photosLeft } = useSync();
   useMinuteTick();
   return (
     <>
@@ -45,7 +51,7 @@ function SyncSheet() {
           <Icon name="cloud" />
           <div className="grow">
             <div className="t">{S.title}</div>
-            <div className="s">{syncText(state, at)}</div>
+            <div className="s">{statusLine(state, at, photosLeft)}</div>
           </div>
         </div>
         <div className="onb-list">
@@ -56,6 +62,10 @@ function SyncSheet() {
           <div>
             <Icon name="refresh" />
             <span>{S.infoAuto}</span>
+          </div>
+          <div>
+            <Icon name="camera" />
+            <span>{S.infoPhotos}</span>
           </div>
           <div>
             <Icon name="shield" />
@@ -87,14 +97,14 @@ export const openSyncSheet = () => ui().openSheet(() => <SyncSheet />, { auto: t
 
 /** Карточка в «Ещё». */
 export function SyncCard() {
-  const { state, at } = useSync();
+  const { state, at, photosLeft } = useSync();
   useMinuteTick();
   return (
     <div className={`sync-card ${isAlert(state) ? 'sync-card--alert' : ''}`}>
       <Icon name="cloud" />
       <div className="grow">
         <div className="t">{S.title}</div>
-        <div className="s">{syncText(state, at)}</div>
+        <div className="s">{statusLine(state, at, photosLeft)}</div>
       </div>
       {state === 'off' ? (
         <button type="button" className="btn btn-sm btn-primary" onClick={() => void connectYandex()}>

@@ -2,6 +2,7 @@
 import { useNavigate, useParams } from 'react-router';
 import { relinkCertificates } from '../../domain/certificates';
 import { ulid } from '../../domain/ids';
+import { photoRefs } from '../../domain/photos';
 import { PHOTO_STAGES } from '../../domain/constants';
 import { repeatDraft } from '../../domain/procedures';
 import { lotInfo } from '../../domain/procedures';
@@ -28,7 +29,7 @@ import {
   serviceName,
   zoneName,
 } from '../names';
-import { allBlobIds, useData } from '../store';
+import { useData } from '../store';
 import { ui, type ViewerItem } from '../ui';
 import { pickFiles, savePhotos } from '../../media/cache';
 import { NotFound } from './ClientCard';
@@ -71,7 +72,7 @@ export function ProcedureView() {
   const quickPhoto = async (stage: PhotoStage) => {
     const files = await pickFiles();
     if (!files.length) return;
-    const { refs, failed } = await savePhotos(files, idx.data.settings.photoMaxSide);
+    const { refs, failed } = await savePhotos(files, idx.data.settings);
     if (failed) ui().toast(ru.photo.failed);
     if (!refs.length) return;
     const cur = useData.getState().idx.proc.get(p.id);
@@ -118,8 +119,8 @@ export function ProcedureView() {
     // Фото удалённой процедуры стираются, когда «Вернуть» уже недоступно
     setTimeout(() => {
       if (!restored) {
-        const ids = allBlobIds({ ...useData.getState().data, clients: [], procedures: [snapshot] });
-        useData.getState().apply((tx) => tx.dropBlobs(ids));
+        const refs = photoRefs({ clients: [], procedures: [snapshot] });
+        useData.getState().apply((tx) => tx.dropPhotos(refs));
       }
     }, 6000);
   };

@@ -3,6 +3,7 @@
 // ImageBitmap освобождается сразу: на iPhone мало памяти.
 import { ulid } from '../domain/ids';
 import type { PhotoRef } from '../domain/types';
+import { exifTakenAt } from './exif';
 
 export interface ProcessedPhoto {
   ref: PhotoRef;
@@ -49,7 +50,17 @@ const fit = (w: number, h: number, max: number) => {
   return [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))] as const;
 };
 
-export async function processPhoto(file: Blob, maxSide: number): Promise<ProcessedPhoto> {
+/** EXIF лежит в начале файла: читаем только первые 128 КБ. */
+async function takenAt(file: Blob): Promise<string | undefined> {
+  try {
+    return exifTakenAt(new Uint8Array(await file.slice(0, 128 * 1024).arrayBuffer()));
+  } catch {
+    return undefined;
+  }
+}
+
+export async function processPhoto(file: Blob, maxSide: number, keepTakenAt = false): Promise<ProcessedPhoto> {
+  const taken = keepTakenAt ? await takenAt(file) : undefined;
   const src = await decode(file);
   try {
     const sw = 'naturalWidth' in src ? src.naturalWidth : src.width;
@@ -58,7 +69,9 @@ export async function processPhoto(file: Blob, maxSide: number): Promise<Process
     const full = await toJpeg(draw(src, w, h), 0.85);
     const [tw, th] = fit(sw, sh, THUMB_SIDE);
     const thumb = await toJpeg(draw(src, tw, th), 0.75);
-    return { ref: { blobId: ulid(), thumbId: ulid(), width: w, height: h, bytes: full.size }, full, thumb };
+    const ref: PhotoRef = { blobId: ulid(), thumbId: ulid(), width: w, height: h, bytes: full.size };
+    if (taken) ref.takenAt = taken;
+    return { ref, full, thumb };
   } finally {
     if ('close' in src) src.close();
   }

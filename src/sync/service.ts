@@ -5,9 +5,21 @@ import { generateDeviceKey, openToken, sealToken } from '../crypto/device';
 import { requireSession } from '../crypto/session';
 import type { VaultHeader } from '../crypto/vault';
 import { local } from '../db/repo';
+import { todayISO } from '../domain/dates';
+import { photoFiles, type PhotoKind } from '../domain/photos';
 import { AuthError, OfflineError, type StorageAdapter } from './adapter';
 import { fetchRemoteHeader, OtherVaultError, RemoteCorruptError, RollbackError, sync, type SyncResult } from './engine';
 import { MockAdapter } from './mockAdapter';
+import {
+  deleteRemotePhotos,
+  fetchPhoto,
+  localPhotoGc,
+  prefetchThumbs,
+  refsOf,
+  remotePhotoGc,
+  uploadPhotos,
+  type PhotoDeps,
+} from './photos';
 import { YandexDiskAdapter } from './yandexDiskAdapter';
 
 interface StoredToken {
@@ -79,4 +91,48 @@ export const runSync = (header: VaultHeader): Promise<SyncResult> =>
 
 export async function lastSyncAt(): Promise<string> {
   return (await local().getSyncMeta()).lastSyncAt;
+}
+
+// ── Фото ──
+
+const photoDeps = (): PhotoDeps => ({ local: local(), remote: remote(), refs: refsOf(local(), todayISO()) });
+
+const GC_EVERY_MS = 24 * 3600_000;
+
+/**
+ * Обмен фото после синхронизации записей: удалить убранные, загрузить новые, скачать превью, убрать лишнее.
+ * `keep` — фото открытых форм, `onProgress` — сколько ещё ждут загрузки.
+ */
+export async function runPhotos(opts: {
+  keep: ReadonlySet<string>;
+  onProgress: (left: number) => void;
+  isStopped: () => boolean;
+}): Promise<void> {
+  const d = photoDeps();
+  await deleteRemotePhotos(d);
+  await uploadPhotos(d, opts.onProgress);
+  if (opts.isStopped()) return;
+  await prefetchThumbs(d, opts.isStopped);
+  await localPhotoGc(d, opts.keep);
+  const last = (await local().getMeta<number>('photoGcAt')) ?? 0;
+  if (Date.now() - last > GC_EVERY_MS && !opts.isStopped()) {
+    await remotePhotoGc(d);
+    await local().setMeta('photoGcAt', Date.now());
+  }
+}
+
+/** Сколько фото этого устройства ещё не загружено на Диск (без фото незакрытых форм). */
+export async function photosWaiting(): Promise<number> {
+  const wanted = photoFiles(refsOf(local(), todayISO())());
+  return (await local().uploadQueue()).filter((id) => wanted.has(id)).length;
+}
+
+/** Фото, которого нет на устройстве: скачать с Диска (null — его там нет или нет связи). */
+export async function loadRemotePhoto(id: string, kind: PhotoKind): Promise<Blob | null> {
+  if (!(await isConnected())) return null;
+  try {
+    return await fetchPhoto({ local: local(), remote: remote() }, id, kind);
+  } catch {
+    return null;
+  }
 }

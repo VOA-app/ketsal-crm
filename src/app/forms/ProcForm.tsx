@@ -267,7 +267,7 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
       status: d.status,
       model: d.model.on ? { on: true, courseId: d.model.courseId || '' } : { on: false, courseId: '' },
     };
-    const removed = photos.removedIds();
+    const removed = photos.removedRefs();
     useData.getState().apply((tx) => {
       tx.put('procedures', rec);
       const certsNow = tx.data.certificates;
@@ -285,8 +285,9 @@ function ProcForm({ clientId, procId, draft }: { clientId?: string; procId?: str
       const cl = tx.data.clients.find((x) => x.id === rec.clientId);
       if (cl && rec.model.on && !cl.tags.includes(MODEL_TAG))
         tx.put('clients', { ...cl, tags: [...cl.tags, MODEL_TAG] });
-      tx.dropBlobs(removed);
+      tx.dropPhotos(removed);
     });
+    photos.commit();
     sheet.close();
     const st = data.settings;
     ui().toast(

@@ -4,7 +4,8 @@
 import { requireSession } from '../crypto/session';
 import type { VaultHeader } from '../crypto/vault';
 import { defaultLists, defaultSettings, emptyData } from '../domain/defaults';
-import type { Data, Lists, Settings } from '../domain/types';
+import type { PhotoKind } from '../domain/photos';
+import type { Data, Lists, PhotoRef, Settings } from '../domain/types';
 import { COLLS, KIND_COLL } from './kinds';
 import { db } from './local';
 import { LocalStore, type Change } from './localStore';
@@ -45,16 +46,11 @@ export function forgetDecrypted() {
 
 // ── Фото ──
 
-export const putBlobs = (items: { id: string; blob: Blob; kind: 'photo' | 'thumb' }[]) => local().putBlobs(items);
+export const putBlobs = (items: { id: string; blob: Blob; kind: PhotoKind }[]) => local().putBlobs(items);
 export const getBlob = (id: string) => local().getBlob(id);
-
-export async function deleteBlobs(ids: string[]): Promise<void> {
-  if (ids.length) await db().blobs.bulkDelete(ids);
-}
-
-export async function clearBlobs(): Promise<void> {
-  await db().blobs.clear();
-}
+/** Фото убрали из данных: стереть с устройства, а с Диска — при следующей синхронизации. */
+export const deletePhotos = (refs: PhotoRef[]) => local().deletePhotos(refs);
+export const clearBlobs = () => local().clearBlobs();
 
 // ── Перенос открытых данных этапа 1 ──
 

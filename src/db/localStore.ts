@@ -4,11 +4,12 @@ import { aadFor, open, seal } from '../crypto/aead';
 import type { Session } from '../crypto/session';
 import { defaultLists, defaultSettings, emptyData } from '../domain/defaults';
 import { Clock, maxHlc, type HLC } from '../domain/hlc';
-import type { Data, Entity, Lists, Settings } from '../domain/types';
+import { photoFiles, type PhotoKind } from '../domain/photos';
+import type { Data, Entity, Lists, PhotoRef, Settings } from '../domain/types';
 import type { CatalogState, Envelope } from '../sync/merge';
 import { pack, SHARD_IDS, shardOf, unpack } from './codec';
 import { COLL_KIND, COLLS, KIND_COLL, type Coll, type Kind } from './kinds';
-import type { KetsalDB, ShardRow } from './local';
+import type { BlobRow, KetsalDB, PhotoDelRow, ShardRow } from './local';
 
 interface ShardBody {
   format: 2;
@@ -432,16 +433,21 @@ export class LocalStore {
     this.cat = null;
   }
 
-  // ── Фото ──
+  // ── Фото (SPEC §8): в базе и на Диске — конверт KTS1 с AAD `…|photo|<id>|1`, один и тот же ──
 
-  async putBlobs(items: { id: string; blob: Blob; kind: 'photo' | 'thumb' }[]): Promise<void> {
+  /** Новые фото этого устройства: зашифровать, сохранить и поставить в очередь на загрузку. */
+  async putBlobs(items: { id: string; blob: Blob; kind: PhotoKind }[]): Promise<void> {
     const { dek, vaultId } = this.session();
-    const rows = [];
+    const at = Date.now();
+    const rows: BlobRow[] = [];
     for (const it of items) {
       const ct = await seal(dek, new Uint8Array(await it.blob.arrayBuffer()), aadFor(vaultId, 'photo', it.id, 1));
-      rows.push({ id: it.id, kind: it.kind, ct, synced: false });
+      rows.push({ id: it.id, kind: it.kind, ct, synced: false, at });
     }
-    await this.db.blobs.bulkPut(rows);
+    await this.db.transaction('rw', this.db.blobs, this.db.photoUp, async () => {
+      await this.db.blobs.bulkPut(rows);
+      await this.db.photoUp.bulkPut(rows.map((r) => ({ id: r.id, at })));
+    });
   }
 
   async getBlob(id: string): Promise<Blob | null> {
@@ -450,5 +456,81 @@ export class LocalStore {
     const { dek, vaultId } = this.session();
     const pt = await open(dek, row.ct, aadFor(vaultId, 'photo', id, 1));
     return new Blob([pt.slice().buffer as ArrayBuffer], { type: 'image/jpeg' });
+  }
+
+  /** Файл, скачанный с Диска: проверить, что он наш и цел (иначе DecryptError), и сохранить. */
+  async putDownloaded(id: string, kind: PhotoKind, ct: Uint8Array): Promise<Blob> {
+    const { dek, vaultId } = this.session();
+    const pt = await open(dek, ct, aadFor(vaultId, 'photo', id, 1));
+    await this.db.blobs.put({ id, kind, ct, synced: true, at: Date.now() });
+    return new Blob([pt.slice().buffer as ArrayBuffer], { type: 'image/jpeg' });
+  }
+
+  /** Убрать фото с устройства; то, что уже было на Диске, — в очередь на удаление оттуда. */
+  async deletePhotos(refs: PhotoRef[]): Promise<void> {
+    const files = Array.from(photoFiles(refs));
+    if (!files.length) return;
+    const ids = files.map(([id]) => id);
+    await this.db.transaction('rw', this.db.blobs, this.db.photoUp, this.db.photoDel, async () => {
+      // Ещё не загруженное на Диск удалять оттуда не нужно
+      const notUploaded = new Set(await this.db.photoUp.where('id').anyOf(ids).primaryKeys());
+      await this.db.blobs.bulkDelete(ids);
+      await this.db.photoUp.bulkDelete(ids);
+      await this.db.photoDel.bulkPut(files.filter(([id]) => !notUploaded.has(id)).map(([id, kind]) => ({ id, kind })));
+    });
+  }
+
+  /** Очередь загрузки: id в порядке появления. */
+  async uploadQueue(): Promise<string[]> {
+    return (await this.db.photoUp.toArray()).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)).map((r) => r.id);
+  }
+
+  async blobRow(id: string): Promise<BlobRow | undefined> {
+    return this.db.blobs.get(id);
+  }
+
+  async markUploaded(id: string): Promise<void> {
+    await this.db.transaction('rw', this.db.blobs, this.db.photoUp, async () => {
+      await this.db.blobs.update(id, { synced: true });
+      await this.db.photoUp.delete(id);
+    });
+  }
+
+  async deleteQueue(): Promise<PhotoDelRow[]> {
+    return this.db.photoDel.toArray();
+  }
+
+  async markRemoteDeleted(id: string): Promise<void> {
+    await this.db.photoDel.delete(id);
+  }
+
+  /** Какие из файлов уже есть на устройстве. */
+  async presentBlobs(ids: string[]): Promise<Set<string>> {
+    return new Set(await this.db.blobs.where('id').anyOf(ids).primaryKeys());
+  }
+
+  /** Все файлы на устройстве: id и когда появились (без шифротекста, чтобы не грузить память). */
+  async blobAges(): Promise<{ id: string; at: number }[]> {
+    const out: { id: string; at: number }[] = [];
+    await this.db.blobs.each((b) => {
+      out.push({ id: b.id, at: b.at ?? 0 });
+    });
+    return out;
+  }
+
+  /** Стереть файлы только с устройства (на них больше нет ссылок в данных). */
+  async dropLocalBlobs(ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    await this.db.transaction('rw', this.db.blobs, this.db.photoUp, async () => {
+      await this.db.blobs.bulkDelete(ids);
+      await this.db.photoUp.bulkDelete(ids);
+    });
+  }
+
+  async clearBlobs(): Promise<void> {
+    await this.db.transaction('rw', this.db.blobs, this.db.photoUp, async () => {
+      await this.db.blobs.clear();
+      await this.db.photoUp.clear();
+    });
   }
 }

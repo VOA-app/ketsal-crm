@@ -3,7 +3,8 @@ import type { RemoteMeta, StorageAdapter } from './adapter';
 
 export class MockAdapter implements StorageAdapter {
   readonly files = new Map<string, { data: Uint8Array; modified: string }>();
-  private n = 0;
+  /** Часы облака: тесты сдвигают их, чтобы проверить уборку старых файлов */
+  now: () => number = () => Date.now();
   /** Вызывается перед каждой записью — чтобы в тестах вклиниться «другим устройством». */
   beforeWrite?: (path: string) => Promise<void> | void;
 
@@ -19,8 +20,7 @@ export class MockAdapter implements StorageAdapter {
 
   async write(path: string, data: Uint8Array): Promise<void> {
     await this.beforeWrite?.(path);
-    this.n += 1;
-    this.files.set(path, { data: data.slice(), modified: String(this.n).padStart(8, '0') });
+    this.files.set(path, { data: data.slice(), modified: new Date(this.now()).toISOString() });
   }
 
   async remove(path: string): Promise<void> {

@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { todayISO } from '../domain/dates';
 import { emptyData } from '../domain/defaults';
 import { buildIndex, type DomainIndex } from '../domain/indexing';
-import type { Data, Entity, Lists, Settings } from '../domain/types';
+import type { Data, Entity, Lists, PhotoRef, Settings } from '../domain/types';
 import { COLLS, type Coll, type Item } from '../db/kinds';
 import { endSession, startSession } from '../crypto/session';
 import {
@@ -20,7 +20,7 @@ import { ulid } from '../domain/ids';
 import {
   clearLegacy,
   currentData,
-  deleteBlobs,
+  deletePhotos,
   forgetDecrypted,
   getVaultHeader,
   hasLegacyData,
@@ -53,8 +53,8 @@ export interface Tx {
   purge(coll: Coll, id: string): void;
   settings(patch: Partial<Settings>): void;
   lists(patch: Partial<Lists>): void;
-  /** Фото, которые надо стереть с устройства после сохранения */
-  dropBlobs(ids: string[]): void;
+  /** Фото, которые надо стереть с устройства и с Диска после сохранения */
+  dropPhotos(refs: PhotoRef[]): void;
 }
 
 interface DataState {
@@ -88,7 +88,7 @@ function makeTx(base: Data) {
   const data: Data = { ...base };
   const copied = new Set<Coll>();
   const change: Change = { puts: [], dels: [] };
-  const blobs: string[] = [];
+  const photos: PhotoRef[] = [];
   const own = <C extends Coll>(coll: C) => {
     if (!copied.has(coll)) {
       (data[coll] as unknown[]) = (data[coll] as unknown[]).slice();
@@ -130,11 +130,11 @@ function makeTx(base: Data) {
       data.lists = { ...data.lists, ...patch };
       change.lists = data.lists;
     },
-    dropBlobs(ids) {
-      blobs.push(...ids.filter((id) => id && !id.startsWith('demo:')));
+    dropPhotos(refs) {
+      photos.push(...refs.filter((r) => r.blobId && !r.blobId.startsWith('demo:')));
     },
   };
-  return { tx, data, change, blobs };
+  return { tx, data, change, photos };
 }
 
 const saveFailed = (e: unknown) => {
@@ -329,11 +329,11 @@ export const useData = create<DataState>((set, get) => {
 
     apply(fn) {
       if (get().status !== 'ready') return;
-      const { tx, data, change, blobs } = makeTx(get().data);
+      const { tx, data, change, photos } = makeTx(get().data);
       fn(tx);
       set({ data, idx: buildIndex(data, todayISO()) });
       writeChange(change)
-        .then(() => deleteBlobs(blobs))
+        .then(() => deletePhotos(photos))
         .then(syncSoon)
         .catch(saveFailed);
     },
@@ -353,20 +353,5 @@ export const useData = create<DataState>((set, get) => {
     },
   };
 });
-
-/** Все id фото в данных — чтобы при очистке базы стереть файлы. */
-export function allBlobIds(data: Data): string[] {
-  const out: string[] = [];
-  const add = (r: { blobId: string; thumbId: string } | null | undefined) => {
-    if (r) out.push(r.blobId, r.thumbId);
-  };
-  for (const c of data.clients) {
-    add(c.facePhoto);
-    c.consents?.pd?.photos?.forEach(add);
-    c.consents?.procedure?.photos?.forEach(add);
-  }
-  for (const p of data.procedures) Object.values(p.photos || {}).forEach((arr) => arr.forEach(add));
-  return out;
-}
 
 export { COLLS };

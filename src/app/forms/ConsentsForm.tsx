@@ -30,11 +30,12 @@ function ConsentsForm({ clientId }: { clientId: string }) {
     set(k, { photos: cons[k].photos.filter((_, j) => j !== i) });
   };
   const save = () => {
-    const removed = photos.removedIds();
+    const removed = photos.removedRefs();
     useData.getState().apply((tx) => {
       tx.put('clients', { ...c, consents: cons });
-      tx.dropBlobs(removed);
+      tx.dropPhotos(removed);
     });
+    photos.commit();
     sheet.close();
     ui().toast(ru.consents.saved);
   };

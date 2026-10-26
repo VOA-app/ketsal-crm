@@ -5,6 +5,7 @@ import { clientInfo, hasHealthData, type ClientInfo, type CorrItem, type UpdItem
 import { PHOTO_STAGES } from '../../domain/constants';
 import { ageOn } from '../../domain/dates';
 import { procsOf } from '../../domain/indexing';
+import { photoRefs } from '../../domain/photos';
 import { remindedAt } from '../../domain/reminders';
 import { formalName, fullName } from '../../domain/search';
 import { fmtPhone } from '../../domain/phone';
@@ -24,7 +25,7 @@ import { openMessage } from '../forms/MessageSheet';
 import { openProcForm } from '../forms/ProcForm';
 import { repeatDraft } from '../../domain/procedures';
 import { healthMarks, zoneName } from '../names';
-import { allBlobIds, useData } from '../store';
+import { useData } from '../store';
 import { ui, type ViewerItem } from '../ui';
 import { useView, type ClientTab } from '../view';
 import { dueDot, dueState } from './Clients';
@@ -409,14 +410,14 @@ export function ClientCard() {
     const procs = procsOf(useData.getState().idx, c.id);
     useData.getState().apply((tx) => {
       // Фото клиентки и её процедур стираются физически; сертификат остаётся использованным
-      const blobIds = allBlobIds({ ...tx.data, clients: [c], procedures: procs });
+      const refs = photoRefs({ clients: [c], procedures: procs });
       for (const p of procs) {
         tx.purge('procedures', p.id);
         for (const cert of tx.data.certificates)
           if (cert.usedProcId === p.id) tx.put('certificates', { ...cert, usedProcId: 'deleted' });
       }
       tx.purge('clients', c.id);
-      tx.dropBlobs(blobIds);
+      tx.dropPhotos(refs);
     });
     ui().closeAllSheets();
     navigate('/clients', { replace: true });

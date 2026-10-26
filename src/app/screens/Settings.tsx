@@ -1,5 +1,5 @@
 // Настройки: окна напоминаний, тема, шаблоны сообщений, списки вариантов.
-// Вход и автоблокировка появятся на этапе 2, синхронизация — на этапе 3.
+// Автоблокировка, дата съёмки фото и инструменты для разработки.
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { todayISO } from '../../domain/dates';
@@ -8,7 +8,7 @@ import type { Lists, Settings as SettingsT, TemplateId } from '../../domain/type
 import { clearBlobs } from '../../db/repo';
 import { TEMPLATE, ru } from '../../i18n/ru';
 import { Icon } from '../components/Icon';
-import { Chip, NavBar, Seg } from '../components/kit';
+import { Chip, NavBar, Seg, SwitchRow } from '../components/kit';
 import { DEMO_ENABLED, useData } from '../store';
 import { ui } from '../ui';
 
@@ -126,6 +126,7 @@ export function Settings() {
   const navigate = useNavigate();
   const theme = useData((s) => s.data.settings.theme);
   const autoLock = useData((s) => s.data.settings.autoLockMinutes);
+  const keepTakenAt = useData((s) => s.data.settings.keepTakenAt);
 
   const demoReset = async () => {
     const ok = await ui().confirm({ title: S.demoResetTitle, text: S.demoResetText, ok: S.demoResetOk, danger: false });
@@ -196,6 +197,15 @@ export function Settings() {
             </div>
             <p className="hint mt-8 mb-0">{S.autoLockHint}</p>
           </div>
+        </div>
+        <div className="section-title">{S.photos}</div>
+        <div className="card card--tight">
+          <SwitchRow
+            title={S.keepTakenAt}
+            sub={S.keepTakenAtHint}
+            checked={keepTakenAt}
+            onChange={(v) => useData.getState().apply((tx) => tx.settings({ keepTakenAt: v }))}
+          />
         </div>
         <div className="section-title">{S.theme}</div>
         <Seg

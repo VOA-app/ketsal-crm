@@ -85,13 +85,21 @@ export class YandexDiskAdapter implements StorageAdapter {
     if (!r.ok && r.status !== 404) throw new RemoteError(r.status);
   }
 
+  /** Содержимое папки целиком: Диск отдаёт его страницами. */
   async list(dir: string) {
-    const r = await this.call(
-      `/resources?${this.q(dir)}&limit=1000&fields=_embedded.items.name,_embedded.items.size,_embedded.items.modified`,
-    );
-    if (r.status === 404) return [];
-    if (!r.ok) throw new RemoteError(r.status);
-    const j = (await r.json()) as { _embedded?: { items: { name: string; size?: number; modified: string }[] } };
-    return (j._embedded?.items ?? []).map((i) => ({ name: i.name, size: i.size ?? 0, modified: i.modified }));
+    const PAGE = 1000;
+    const out: { name: string; size: number; modified: string }[] = [];
+    for (let offset = 0; ; offset += PAGE) {
+      const r = await this.call(
+        `/resources?${this.q(dir)}&limit=${PAGE}&offset=${offset}` +
+          '&fields=_embedded.items.name,_embedded.items.size,_embedded.items.modified',
+      );
+      if (r.status === 404) return out;
+      if (!r.ok) throw new RemoteError(r.status);
+      const j = (await r.json()) as { _embedded?: { items: { name: string; size?: number; modified: string }[] } };
+      const items = j._embedded?.items ?? [];
+      for (const i of items) out.push({ name: i.name, size: i.size ?? 0, modified: i.modified });
+      if (items.length < PAGE) return out;
+    }
   }
 }

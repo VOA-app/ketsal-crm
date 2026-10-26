@@ -1,6 +1,9 @@
 // Адреса картинок для показа: objectURL сохранённых фото с LRU-кэшем (~200 штук) и демо-рисунки.
+// Фото, которого нет на устройстве (снято на другом), скачивается с Диска при первом показе.
 import { getBlob, putBlobs } from '../db/repo';
+import type { PhotoKind } from '../domain/photos';
 import type { PhotoRef } from '../domain/types';
+import { loadRemotePhoto } from '../sync/service';
 import { processPhoto } from './process';
 
 const LIMIT = 200;
@@ -26,7 +29,8 @@ export function cachedUrl(id: string): string | null {
   return u ?? null;
 }
 
-export function photoUrl(id: string): Promise<string> {
+/** Адрес фото для <img>; '' — фото пока нет (не скачано, нет сети). */
+export function photoUrl(id: string, kind: PhotoKind): Promise<string> {
   const hit = cachedUrl(id);
   if (hit) return Promise.resolve(hit);
   let p = pending.get(id);
@@ -37,7 +41,12 @@ export function photoUrl(id: string): Promise<string> {
         const { demoPhotoUri } = await import('../dev/demoPhotos');
         url = demoPhotoUri(id);
       } else {
-        const blob = await getBlob(id);
+        let blob: Blob | null = null;
+        try {
+          blob = (await getBlob(id)) ?? (await loadRemotePhoto(id, kind));
+        } catch {
+          // Файл на устройстве не расшифровался — показываем как отсутствующий
+        }
         url = blob ? URL.createObjectURL(blob) : '';
       }
       if (url) remember(id, url);
@@ -54,6 +63,18 @@ export function revokeAll() {
   urls.clear();
 }
 
+// Фото открытых форм: ссылок на них в данных ещё нет, но уборка их трогать не должна
+const drafts = new Set<string>();
+export const draftPhotoIds = (): ReadonlySet<string> => drafts;
+export function holdDraft(refs: PhotoRef[], on: boolean) {
+  for (const r of refs) {
+    for (const id of [r.blobId, r.thumbId]) {
+      if (on) drafts.add(id);
+      else drafts.delete(id);
+    }
+  }
+}
+
 /** Выбор фото с камеры или из галереи. */
 export function pickFiles(multiple = true): Promise<File[]> {
   return new Promise((resolve) => {
@@ -67,12 +88,15 @@ export function pickFiles(multiple = true): Promise<File[]> {
 }
 
 /** Обработать и сохранить выбранные фото; возвращает ссылки на сохранённые. */
-export async function savePhotos(files: File[], maxSide: number): Promise<{ refs: PhotoRef[]; failed: number }> {
+export async function savePhotos(
+  files: File[],
+  opts: { photoMaxSide: number; keepTakenAt: boolean },
+): Promise<{ refs: PhotoRef[]; failed: number }> {
   const refs: PhotoRef[] = [];
   let failed = 0;
   for (const f of files) {
     try {
-      const p = await processPhoto(f, maxSide);
+      const p = await processPhoto(f, opts.photoMaxSide, opts.keepTakenAt);
       await putBlobs([
         { id: p.ref.blobId, blob: p.full, kind: 'photo' },
         { id: p.ref.thumbId, blob: p.thumb, kind: 'thumb' },
