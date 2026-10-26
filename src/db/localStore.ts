@@ -6,7 +6,7 @@ import { defaultLists, defaultSettings, emptyData } from '../domain/defaults';
 import { Clock, maxHlc, type HLC } from '../domain/hlc';
 import { photoFiles, type PhotoKind } from '../domain/photos';
 import type { Data, Entity, Lists, PhotoRef, Settings } from '../domain/types';
-import type { CatalogState, Envelope } from '../sync/merge';
+import { fixDuplicateCardNos, mergeCatalog, mergeRecords, type CatalogState, type Envelope } from '../sync/merge';
 import { pack, SHARD_IDS, shardOf, unpack } from './codec';
 import { COLL_KIND, COLLS, KIND_COLL, type Coll, type Kind } from './kinds';
 import type { BlobRow, KetsalDB, PhotoDelRow, ShardRow } from './local';
@@ -431,6 +431,67 @@ export class LocalStore {
   forget() {
     this.shards = null;
     this.cat = null;
+  }
+
+  // ── Резервная копия (SPEC §9.1) ──
+
+  /** id записей, удалённых на этом устройстве: из копии они не возвращаются (удаление окончательно). */
+  tombstonedIds(): Set<string> {
+    const out = new Set<string>();
+    for (const m of this.shards!.values()) for (const e of m.values()) if (e.deleted) out.add(e.id);
+    return out;
+  }
+
+  /**
+   * «Объединить» с копией: слияние как при синхронизации (§7.1), изменённое ставится в очередь отправки.
+   * Возвращает, изменились ли данные.
+   */
+  importMerged(records: Envelope[], catalog: CatalogState): Promise<boolean> {
+    return this.serial(async () => {
+      const clock = await this.ensureClock();
+      const byShard = new Map<string, Envelope[]>();
+      for (const e of records) {
+        const s = shardOf(e.id);
+        if (!byShard.has(s)) byShard.set(s, []);
+        byShard.get(s)!.push(e);
+        clock.receive(e.updatedAt);
+      }
+      const dirty = new Set<string>();
+      for (const [s, recs] of byShard) {
+        const m = this.shards!.get(s)!;
+        const merged = mergeRecords(m.values(), recs);
+        const before = json(Array.from(m.values()).sort((a, b) => (a.id < b.id ? -1 : 1)));
+        if (json(merged) !== before) {
+          this.shards!.set(s, new Map(merged.map((e) => [e.id, e])));
+          dirty.add(s);
+        }
+      }
+      const all = SHARD_IDS.flatMap((s) => Array.from(this.shards!.get(s)!.values()));
+      for (const e of fixDuplicateCardNos(all, () => clock.tick())) {
+        const s = shardOf(e.id);
+        this.shards!.get(s)!.set(e.id, e);
+        dirty.add(s);
+      }
+      for (const t of Object.values(catalog.fieldUpdatedAt)) clock.receive(t);
+      const cat = mergeCatalog(this.catalogState(), catalog);
+      const catChanged = json(cat) !== json(this.catalogState());
+      if (catChanged) {
+        this.cat!.values = cat.values;
+        this.cat!.fieldUpdatedAt = cat.fieldUpdatedAt;
+      }
+      if (!dirty.size && !catChanged) return false;
+      await this.persist(dirty, catChanged ? [...dirty, 'catalog'] : dirty);
+      return true;
+    });
+  }
+
+  /** Фото из копии: уже зашифровано ключом этого хранилища, встаёт в очередь на Диск. */
+  async putImportedBlob(id: string, kind: PhotoKind, ct: Uint8Array): Promise<void> {
+    const at = Date.now();
+    await this.db.transaction('rw', this.db.blobs, this.db.photoUp, async () => {
+      await this.db.blobs.put({ id, kind, ct, synced: false, at });
+      await this.db.photoUp.put({ id, at });
+    });
   }
 
   // ── Фото (SPEC §8): в базе и на Диске — конверт KTS1 с AAD `…|photo|<id>|1`, один и тот же ──

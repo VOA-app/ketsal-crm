@@ -95,6 +95,32 @@ export async function prefetchThumbs(d: PhotoDeps, isStopped: () => boolean = ()
   return n;
 }
 
+/**
+ * Докачать все файлы фото, которых нет на устройстве (перед копией и выгрузкой).
+ * Возвращает, сколько так и не удалось получить.
+ */
+export async function downloadMissing(
+  d: Pick<PhotoDeps, 'local' | 'remote' | 'refs'>,
+  onProgress?: (done: number, total: number) => void,
+): Promise<number> {
+  const files = Array.from(photoFiles(d.refs()));
+  const have = await d.local.presentBlobs(files.map(([id]) => id));
+  const todo = files.filter(([id]) => !have.has(id));
+  let failed = 0;
+  let done = 0;
+  for (const [id, kind] of todo) {
+    try {
+      if (!(await fetchPhoto(d, id, kind))) failed += 1;
+    } catch (e) {
+      if (!(e instanceof PhotoCorruptError)) throw e;
+      failed += 1;
+    }
+    done += 1;
+    onProgress?.(done, todo.length);
+  }
+  return failed;
+}
+
 /** Стереть с устройства файлы, на которые в данных больше нет ссылок (удалены здесь или на другом устройстве). */
 export async function localPhotoGc(d: PhotoDeps, keep: ReadonlySet<string> = new Set()): Promise<number> {
   const wanted = photoFiles(d.refs());

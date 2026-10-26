@@ -1,8 +1,8 @@
-// «Ещё»: отчёты, расходники, сертификаты, настройки.
+// «Ещё»: отчёты, расходники, сертификаты, резервная копия, настройки.
 import { useNavigate } from 'react-router';
 import { certStatus } from '../../domain/certificates';
 import { sum } from '../../domain/money';
-import { fmtMoney } from '../../i18n/format';
+import { fmtMoney, relDay } from '../../i18n/format';
 import { ru } from '../../i18n/ru';
 import { Icon, type IconName } from '../components/Icon';
 import { useData } from '../store';
@@ -45,6 +45,12 @@ export function More() {
           <MenuItem icon="chart" title={M.reports} sub={M.reportsSub} to="/more/reports" />
           <MenuItem icon="box" title={M.expenses} sub={M.expensesSub(fmtMoney(month))} to="/more/expenses" />
           <MenuItem icon="gift" title={M.certs} sub={M.certsSub(active)} to="/more/certificates" />
+          <MenuItem
+            icon="download"
+            title={M.backup}
+            sub={data.settings.lastBackup ? M.backupSub(relDay(data.settings.lastBackup, today)) : M.backupNever}
+            to="/more/backup"
+          />
           <MenuItem icon="sliders" title={M.settings} sub={M.settingsSub} to="/more/settings" />
         </div>
         <div className="menu">

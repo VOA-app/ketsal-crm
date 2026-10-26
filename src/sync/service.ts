@@ -12,6 +12,7 @@ import { fetchRemoteHeader, OtherVaultError, RemoteCorruptError, RollbackError, 
 import { MockAdapter } from './mockAdapter';
 import {
   deleteRemotePhotos,
+  downloadMissing,
   fetchPhoto,
   localPhotoGc,
   prefetchThumbs,
@@ -134,5 +135,25 @@ export async function loadRemotePhoto(id: string, kind: PhotoKind): Promise<Blob
     return await fetchPhoto({ local: local(), remote: remote() }, id, kind);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Перед копией и выгрузкой: скачать с Диска фото, которых нет на устройстве.
+ * Возвращает, сколько фото не удалось получить (нет сети, Диск не подключён, файла нет).
+ */
+export async function fetchMissingPhotos(onProgress?: (done: number, total: number) => void): Promise<number> {
+  const refs = refsOf(local(), todayISO());
+  if (!(await isConnected())) {
+    const files = Array.from(photoFiles(refs()));
+    const have = await local().presentBlobs(files.map(([id]) => id));
+    return files.filter(([id]) => !have.has(id)).length;
+  }
+  try {
+    return await downloadMissing({ local: local(), remote: remote(), refs }, onProgress);
+  } catch {
+    const files = Array.from(photoFiles(refs()));
+    const have = await local().presentBlobs(files.map(([id]) => id));
+    return files.filter(([id]) => !have.has(id)).length;
   }
 }

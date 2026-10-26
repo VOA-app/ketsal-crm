@@ -81,6 +81,8 @@ interface DataState {
   lock(): void;
   apply(fn: (tx: Tx) => void): void;
   replace(data: Data): Promise<void>;
+  /** Перечитать данные из базы устройства (после восстановления из копии) и отправить на Диск */
+  reload(): void;
   refreshToday(): void;
 }
 
@@ -345,6 +347,14 @@ export const useData = create<DataState>((set, get) => {
       } catch (e) {
         saveFailed(e);
       }
+    },
+
+    reload() {
+      if (get().status !== 'ready') return;
+      const today = todayISO();
+      const data = currentData(today);
+      set({ data, idx: buildIndex(data, today) });
+      syncSoon();
     },
 
     refreshToday() {

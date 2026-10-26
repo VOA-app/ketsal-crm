@@ -20,6 +20,7 @@ import { ProcedureView } from './screens/ProcedureView';
 import { Refs } from './screens/Refs';
 import { Reports } from './screens/Reports';
 import { Settings } from './screens/Settings';
+import { Backup } from './screens/Backup';
 import { useData } from './store';
 import { ui, useUi } from './ui';
 
@@ -157,6 +158,7 @@ function Shell() {
           <Route path="/more/expenses" element={<Expenses />} />
           <Route path="/more/certificates" element={<Certificates />} />
           <Route path="/more/settings" element={<Settings />} />
+          <Route path="/more/backup" element={<Backup />} />
           <Route path="*" element={<Navigate to="/clients" replace />} />
         </Routes>
       </div>

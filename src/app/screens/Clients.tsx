@@ -1,5 +1,5 @@
 // Экран «Клиенты»: поиск, виды списка (коррекция, обновление, именинники…), сортировка.
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { CLIENT_VIEWS, type ClientView } from '../../domain/constants';
 import type { CorrItem, ClientInfo, UpdItem } from '../../domain/client';
@@ -235,6 +235,40 @@ function ClientList() {
   );
 }
 
+/** Напоминание о резервной копии (SPEC §9.1): скрывается до следующего запуска. */
+let backupBannerHidden = false;
+
+function BackupBanner() {
+  const navigate = useNavigate();
+  const [hidden, setHidden] = useState(backupBannerHidden);
+  const { lastBackup, backupReminderDays } = useData((s) => s.data.settings);
+  const today = useData((s) => s.idx.today);
+  const hasClients = useData((s) => s.data.clients.length > 0);
+  const days = lastBackup ? daysBetween(lastBackup, today) : Infinity;
+  if (hidden || !hasClients || days < backupReminderDays) return null;
+  const B = ru.backup;
+  return (
+    <div className="banner">
+      <Icon name="download" />
+      <span>{lastBackup ? B.banner(days) : B.bannerNever}</span>
+      <button type="button" className="btn btn-sm btn-primary" onClick={() => navigate('/more/backup')}>
+        {B.bannerDo}
+      </button>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={B.bannerHide}
+        onClick={() => {
+          backupBannerHidden = true;
+          setHidden(true);
+        }}
+      >
+        <Icon name="close" className="i-sm" />
+      </button>
+    </div>
+  );
+}
+
 export function Clients() {
   const idx = useData((s) => s.idx);
   const { clientView, clientSearch, set } = useView();
@@ -285,6 +319,7 @@ export function Clients() {
         </ScrollChips>
       </header>
       <div className="scroller">
+        {!clientSearch.trim() && <BackupBanner />}
         <ClientList />
       </div>
       <Fab label={R.newCard} onClick={() => openClientForm({})} />

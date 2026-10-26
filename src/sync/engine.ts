@@ -17,7 +17,7 @@ const VAULT = 'vault.json';
 const CATALOG = 'catalog.enc';
 const SHARD_DIR = 'shards';
 
-interface RemoteCatalog {
+export interface RemoteCatalog {
   format: 2;
   catalogRev: number;
   shardFiles: Record<string, { rev: number; file: string }>;
@@ -25,7 +25,7 @@ interface RemoteCatalog {
   fieldUpdatedAt: Record<string, HLC>;
 }
 
-interface RemoteShard {
+export interface RemoteShard {
   format: 2;
   records: Envelope[];
 }
@@ -69,20 +69,20 @@ export interface SyncResult {
 
 // ── Файл на Диске: 4 байта ревизии + конверт KTS1 (ревизия входит и в AAD) ──
 
-function frame(rev: number, env: Uint8Array): Uint8Array {
+export function frame(rev: number, env: Uint8Array): Uint8Array {
   const out = new Uint8Array(4 + env.length);
   new DataView(out.buffer).setUint32(0, rev);
   out.set(env, 4);
   return out;
 }
 
-function unframe(bytes: Uint8Array): { rev: number; env: Uint8Array } {
+export function unframe(bytes: Uint8Array): { rev: number; env: Uint8Array } {
   if (bytes.length < 4) throw new Error('short');
   return { rev: new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0), env: bytes.subarray(4) };
 }
 
 const json = (x: unknown) => JSON.stringify(x);
-const sortById = (r: Envelope[]) => r.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+export const sortById = (r: Envelope[]) => r.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
 export const shardFileName = (id: string, rev: number, device: string) => `${id}-${rev}-${device}.enc`;
 

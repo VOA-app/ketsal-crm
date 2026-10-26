@@ -25,6 +25,7 @@ const ICONS = {
   lock: '<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   cloud: '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.1 11 3.8 3.8 0 0 0 7 18.5z"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  upload: '<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>',
   chart: '<path d="M4 20V11M10 20V5M16 20v-7M3 20h18"/>',
   gift: '<rect x="3.5" y="8" width="17" height="4.5" rx="1"/><path d="M5 12.5V20h14v-7.5M12 8v12M12 8c-1.5-3.5-5.5-3.8-5.5-1.2S10.5 8 12 8zM12 8c1.5-3.5 5.5-3.8 5.5-1.2S13.5 8 12 8z"/>',
   sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',

@@ -3,6 +3,7 @@
 // Быстрый вход (Face ID, код) появится на этапе 6.
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { MIN_STRENGTH, passwordStrength } from '../../domain/password';
+import { saveFile } from '../share';
 import { ru } from '../../i18n/ru';
 import { Bird, Logo } from '../components/Brand';
 import { Icon } from '../components/Icon';
@@ -65,26 +66,7 @@ async function copy(text: string) {
 
 /** Сохранить ключ файлом: на iPhone — через «Поделиться» (Файлы, Телеграм), на ПК — загрузкой. */
 async function saveKeyFile(grouped: string) {
-  const file = new File([O.keyFileText(grouped)], O.keyFileName, { type: 'text/plain' });
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] });
-      return;
-    } catch {
-      // отменили — ничего страшного
-      return;
-    }
-  }
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = O.keyFileName;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-    a.remove();
-  }, 1000);
+  await saveFile(new File([O.keyFileText(grouped)], O.keyFileName, { type: 'text/plain' }));
 }
 
 function pickPositions(n: number, max: number): number[] {

@@ -68,3 +68,10 @@ export function fmtMoneyShort(n: number): string {
   if (Math.abs(n) >= 1e3) return `${Math.round(n / 1e3)}${NBSP}${ru.reports.thousand}`;
   return fmtNum(n);
 }
+
+/** Размер файла: «850 КБ», «12,3 МБ». */
+export function fmtBytes(n: number): string {
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))}${NBSP}КБ`;
+  const mb = n / 1024 / 1024;
+  return `${mb.toFixed(mb < 10 ? 1 : 0).replace('.', ',')}${NBSP}МБ`;
+}
