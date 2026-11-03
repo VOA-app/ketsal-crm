@@ -56,8 +56,10 @@ export default defineConfig({
     csp(),
     react(),
     VitePWA({
-      // Новая версия не активируется молча: «Доступно обновление → Обновить» (SPEC §11)
-      registerType: 'prompt',
+      // Service worker выключен (03.11.2026): Safari, пропуская через него запросы, отправляет на Диск
+      // лишнее, и скачивание с downloader.disk.yandex.ru отклоняется (SPEC §11). На месте sw.js —
+      // версия, которая удаляет себя и свой кэш у уже установленных значков. Манифест остаётся.
+      selfDestroying: true,
       injectRegister: false,
       includeAssets: ['fonts/*.woff2', 'icons/*'],
       manifest: {
@@ -75,19 +77,6 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,svg,png,webmanifest}'],
-        // При первой установке сразу взять страницу под управление: без сети приложение откроется
-        // уже со следующего запуска. Новая версия по-прежнему ждёт «Обновить» (skipWaiting не включён)
-        clientsClaim: true,
-        // Запросы к Яндексу — своим обработчиком (public/sw-yandex.js): Safari в service worker
-        // теряет referrerPolicy, и скачивание с Диска получает 403 (SPEC §6.3)
-        importScripts: ['sw-yandex.js'],
-        // Заставки нужны только iOS при установке — в кэш приложения их не кладём
-        globIgnores: ['splash/**'],
-        // Приложение в корне сайта не должно перехватывать соседние разделы (прототип, проверки, демо)
-        navigateFallbackDenylist: BASE === '/ketsal-crm/' ? [/^\/ketsal-crm\/(app|demo|prototype|spikes)(\/|$)/] : [],
       },
     }),
   ],

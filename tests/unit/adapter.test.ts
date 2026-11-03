@@ -1,6 +1,6 @@
 // Ошибки сети для окна синхронизации: адрес сервера без ссылки и номера аккаунта.
 import { describe, expect, it } from 'vitest';
-import { checkSwFailure, offline, OfflineError } from '../../src/sync/adapter';
+import { offline } from '../../src/sync/adapter';
 
 const HREF = 'https://downloader.disk.yandex.ru/disk/abc?uid=1234567&filename=vault.json';
 
@@ -12,16 +12,5 @@ describe('подробности ошибки', () => {
     expect(r.cause).not.toContain('uid');
     expect(r.cause).not.toContain('http');
     expect(r.cause).toContain('no-response');
-  });
-
-  it('ответ 599 от service worker — OfflineError с причиной', async () => {
-    const res = new Response(JSON.stringify({ ketsalSw: 'cors', message: 'TypeError' }), { status: 599 });
-    await expect(checkSwFailure(res, HREF)).rejects.toMatchObject({
-      host: 'downloader.disk.yandex.ru',
-      cause: 'sw cors · TypeError',
-    });
-    await expect(checkSwFailure(new Response('{}', { status: 599 }), HREF)).resolves.toBeUndefined();
-    await expect(checkSwFailure(new Response('ok', { status: 200 }), HREF)).resolves.toBeUndefined();
-    expect(new OfflineError()).toBeInstanceOf(Error);
   });
 });

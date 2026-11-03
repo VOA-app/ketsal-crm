@@ -59,22 +59,6 @@ export function offline(url: string, e: unknown): OfflineError {
   return new OfflineError(hostOf(url), cause);
 }
 
-/**
- * Ответ 599 — его вернул service worker (public/sw-yandex.js), когда запрос к Яндексу не прошёл:
- * kind 'cors' — сервер ответил, но браузер отклонил ответ; 'network' — сервер не ответил.
- */
-export async function checkSwFailure(res: Response, url: string): Promise<void> {
-  if (res.status !== 599) return;
-  let j: { ketsalSw?: string; message?: string };
-  try {
-    j = (await res.json()) as typeof j;
-  } catch {
-    return;
-  }
-  if (!j.ketsalSw) return;
-  throw new OfflineError(hostOf(url), `sw ${j.ketsalSw}${j.message ? ` · ${j.message}` : ''}`);
-}
-
 /** Сервер ответил ошибкой. */
 export class RemoteError extends Error {
   constructor(readonly status: number) {

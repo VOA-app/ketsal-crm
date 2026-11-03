@@ -132,8 +132,6 @@ export const CERT_STATUS: Record<CertStatus, string> = {
 export const ru = {
   appName: 'Кетсаль · учёт клиентов',
   common: {
-    updateReady: 'Доступна новая версия',
-    updateDo: 'Обновить',
     back: 'Назад',
     cancel: 'Отмена',
     close: 'Закрыть',
