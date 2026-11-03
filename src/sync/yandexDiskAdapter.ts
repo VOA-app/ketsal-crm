@@ -1,6 +1,6 @@
 // Яндекс Диск через REST API (SPEC §6.3). Доступ — только к папке приложения (`app:/`).
 // По итогам этапа 0: CORS есть везде, скачивание по ссылке — строго без Referer, иначе 403.
-import { AuthError, OfflineError, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
+import { AuthError, offline, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 
@@ -10,15 +10,17 @@ export class YandexDiskAdapter implements StorageAdapter {
   constructor(private readonly token: () => Promise<string>) {}
 
   private async call(path: string, init: RequestInit = {}): Promise<Response> {
+    // Токен — до запроса: если его нет или он не читается, это «войти снова», а не «нет сети»
+    const token = await this.token();
     let res: Response;
     try {
       res = await fetch(API + path, {
         ...init,
         referrerPolicy: 'no-referrer',
-        headers: { Authorization: `OAuth ${await this.token()}`, Accept: 'application/json', ...init.headers },
+        headers: { Authorization: `OAuth ${token}`, Accept: 'application/json', ...init.headers },
       });
-    } catch {
-      throw new OfflineError();
+    } catch (e) {
+      throw offline(API, e);
     }
     if (res.status === 401) throw new AuthError();
     return res;
@@ -42,8 +44,8 @@ export class YandexDiskAdapter implements StorageAdapter {
     let g: Response;
     try {
       g = await fetch(href, { referrerPolicy: 'no-referrer' });
-    } catch {
-      throw new OfflineError();
+    } catch (e) {
+      throw offline(href, e);
     }
     if (!g.ok) throw new RemoteError(g.status);
     return new Uint8Array(await g.arrayBuffer());
@@ -74,8 +76,8 @@ export class YandexDiskAdapter implements StorageAdapter {
         body: data.slice().buffer as ArrayBuffer,
         referrerPolicy: 'no-referrer',
       });
-    } catch {
-      throw new OfflineError();
+    } catch (e) {
+      throw offline(href, e);
     }
     if (!put.ok) throw new RemoteError(put.status);
   }

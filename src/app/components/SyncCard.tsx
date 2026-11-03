@@ -41,7 +41,7 @@ function statusLine(state: SyncState, at: string, photosLeft: number) {
 }
 
 function SyncSheet() {
-  const { state, at, photosLeft } = useSync();
+  const { state, at, photosLeft, detail } = useSync();
   useMinuteTick();
   return (
     <>
@@ -52,6 +52,7 @@ function SyncSheet() {
           <div className="grow">
             <div className="t">{S.title}</div>
             <div className="s">{statusLine(state, at, photosLeft)}</div>
+            {detail && state !== 'ok' && state !== 'syncing' && <div className="s sync-detail">{S.detail(detail)}</div>}
           </div>
         </div>
         <div className="onb-list">

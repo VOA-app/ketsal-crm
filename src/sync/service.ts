@@ -7,7 +7,7 @@ import type { VaultHeader } from '../crypto/vault';
 import { deviceKey, local } from '../db/repo';
 import { todayISO } from '../domain/dates';
 import { photoFiles, type PhotoKind } from '../domain/photos';
-import { AuthError, OfflineError, type StorageAdapter } from './adapter';
+import { AuthError, OfflineError, RemoteError, type StorageAdapter } from './adapter';
 import { fetchRemoteHeader, OtherVaultError, RemoteCorruptError, RollbackError, sync, type SyncResult } from './engine';
 import { MockAdapter } from './mockAdapter';
 import {
@@ -73,6 +73,14 @@ export function failureOf(e: unknown): SyncFailure {
   if (e instanceof OtherVaultError) return 'otherVault';
   if (e instanceof RemoteCorruptError) return 'corrupt';
   return 'error';
+}
+
+/** Подробность для окна синхронизации: какой адрес не ответил или что ответил сервер. Без данных и токенов. */
+export function failureDetail(e: unknown): string {
+  if (e instanceof OfflineError) return [e.host, e.cause].filter(Boolean).join(' · ');
+  if (e instanceof RemoteError) return `HTTP ${e.status}`;
+  if (e instanceof RemoteCorruptError) return e.path;
+  return e instanceof Error ? e.name : '';
 }
 
 /** vault.json с Диска (для второго устройства) или null, если хранилища там ещё нет. */

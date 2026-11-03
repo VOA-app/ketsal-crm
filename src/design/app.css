@@ -435,3 +435,10 @@
   color: var(--accent-text);
   flex: none;
 }
+
+/* Подробность ошибки синхронизации: адрес сервера, ответ браузера */
+.sync-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  word-break: break-word;
+}

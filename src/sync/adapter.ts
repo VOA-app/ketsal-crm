@@ -24,12 +24,29 @@ export class AuthError extends Error {
   }
 }
 
-/** Нет сети или сервер не ответил. */
+/**
+ * Нет сети или сервер не ответил. host и cause — для подробностей в окне синхронизации:
+ * какой адрес не ответил и что сказал браузер (без токенов и данных).
+ */
 export class OfflineError extends Error {
-  constructor(message = 'offline') {
-    super(message);
+  constructor(
+    readonly host = '',
+    readonly cause: string = '',
+  ) {
+    super(host ? `offline ${host}` : 'offline');
     this.name = 'OfflineError';
   }
+}
+
+/** Ошибка fetch → OfflineError с адресом сервера. */
+export function offline(url: string, e: unknown): OfflineError {
+  let host = '';
+  try {
+    host = new URL(url).host;
+  } catch {
+    // адрес не разобрался — оставим пустым
+  }
+  return new OfflineError(host, e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 }
 
 /** Сервер ответил ошибкой. */

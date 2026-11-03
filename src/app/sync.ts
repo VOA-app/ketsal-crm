@@ -4,7 +4,15 @@ import { create } from 'zustand';
 import { startLogin } from '../auth/yandex-oauth';
 import { getVaultHeader } from '../db/repo';
 import { draftPhotoIds } from '../media/cache';
-import { failureOf, isConnected, lastSyncAt, runPhotos, runSync, type SyncFailure } from '../sync/service';
+import {
+  failureDetail,
+  failureOf,
+  isConnected,
+  lastSyncAt,
+  runPhotos,
+  runSync,
+  type SyncFailure,
+} from '../sync/service';
 
 export type SyncState = 'off' | 'syncing' | 'ok' | SyncFailure;
 
@@ -14,6 +22,8 @@ interface SyncStore {
   at: string;
   /** Фото этого устройства, которые ещё не загружены на Диск */
   photosLeft: number;
+  /** Подробность последней ошибки (адрес сервера, ответ браузера) */
+  detail: string;
   refresh(): Promise<void>;
 }
 
@@ -21,6 +31,7 @@ export const useSync = create<SyncStore>((set) => ({
   state: 'off',
   at: '',
   photosLeft: 0,
+  detail: '',
   async refresh() {
     const connected = await isConnected();
     set({ state: connected ? 'ok' : 'off', at: connected ? await lastSyncAt() : '' });
@@ -55,13 +66,13 @@ export async function syncNow(): Promise<void> {
   useSync.setState({ state: 'syncing' });
   try {
     const r = await runSync(header);
-    useSync.setState({ state: 'ok', at: await lastSyncAt() });
+    useSync.setState({ state: 'ok', at: await lastSyncAt(), detail: '' });
     if (r.changed) onChanged();
     void syncPhotos();
   } catch (e) {
     const f = failureOf(e);
     if (f !== 'offline' && f !== 'auth') console.error(e instanceof Error ? e.name : 'sync error');
-    useSync.setState({ state: f });
+    useSync.setState({ state: f, detail: failureDetail(e) });
   } finally {
     running = false;
   }
