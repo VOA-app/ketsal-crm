@@ -132,6 +132,7 @@ export const CERT_STATUS: Record<CertStatus, string> = {
 export const ru = {
   appName: 'Кетсаль · учёт клиентов',
   common: {
+    helpLink: 'Памятка: если что-то пошло не так',
     updateReady: 'Доступна новая версия',
     updateDo: 'Обновить',
     back: 'Назад',

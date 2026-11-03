@@ -5,6 +5,7 @@ import { sum } from '../../domain/money';
 import { fmtMoney, relDay } from '../../i18n/format';
 import { ru } from '../../i18n/ru';
 import { Icon, type IconName } from '../components/Icon';
+import { HelpLink } from '../components/kit';
 import { useData } from '../store';
 import { SyncCard } from '../components/SyncCard';
 
@@ -59,7 +60,11 @@ export function More() {
             <span className="t">{ru.lock.lockNow}</span>
           </button>
         </div>
-        <div className="about">{M.about(`${__APP_VERSION__}${__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : ''}`)}</div>
+        <div className="about">
+          {M.about(`${__APP_VERSION__}${__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : ''}`)}
+          <br />
+          <HelpLink />
+        </div>
       </div>
     </div>
   );

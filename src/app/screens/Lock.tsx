@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { ru } from '../../i18n/ru';
 import { Bird, Logo } from '../components/Brand';
 import { Icon } from '../components/Icon';
+import { HelpLink } from '../components/kit';
 import { PinPad } from '../components/PinPad';
 import { quickMode, unlockByFaceId, unlockByPin, type QuickMode } from '../security';
 import { useData } from '../store';
@@ -138,6 +139,7 @@ export function Lock() {
             {L.toMaster}
           </button>
         </div>
+        <HelpLink className="lock-help" />
       </div>
     );
   }
@@ -213,6 +215,7 @@ export function Lock() {
           </>
         )}
       </form>
+      <HelpLink className="lock-help" />
     </div>
   );
 }

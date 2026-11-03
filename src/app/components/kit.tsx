@@ -233,6 +233,18 @@ export function Check({
   );
 }
 
+/**
+ * Ссылка на памятку мастеру (help.html, собирается из docs/pamyatka.md). Открывается в том же окне:
+ * страница в кэше приложения, поэтому доступна и без сети; вернуться — кнопкой на самой странице.
+ */
+export function HelpLink({ className = '' }: { className?: string }) {
+  return (
+    <a className={`help-link ${className}`} href={`${import.meta.env.BASE_URL}help.html`}>
+      {ru.common.helpLink}
+    </a>
+  );
+}
+
 export function Kv({ k, children, className = '' }: { k: string; children: ReactNode; className?: string }) {
   return (
     <div className={`kv ${className}`}>

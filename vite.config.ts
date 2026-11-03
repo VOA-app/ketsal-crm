@@ -1,8 +1,10 @@
 /// <reference types="vitest/config" />
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { helpPage } from './src/dev/helpPage';
 
 // CSP из SPEC §11. Только в прод-сборке: dev-сервер Vite вставляет inline-скрипты для HMR.
 const CSP = [
@@ -24,6 +26,32 @@ function csp(): Plugin {
       order: 'pre',
       handler: (html, ctx) =>
         html.replace('<!--CSP-->', ctx.server ? '' : `<meta http-equiv="Content-Security-Policy" content="${CSP}">`),
+    },
+  };
+}
+
+/**
+ * Памятка мастеру как страница приложения: docs/pamyatka.md → help.html (+ help.css). Попадает
+ * в кэш service worker, поэтому открывается и без сети. На dev-сервере отдаётся на лету.
+ */
+function help(): Plugin {
+  const page = () => helpPage(readFileSync('docs/pamyatka.md', 'utf8'));
+  const css = () => readFileSync('src/design/help.css', 'utf8');
+  return {
+    name: 'ketsal-help',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '').split('?')[0];
+        if (url.endsWith('/help.html') || url.endsWith('/help.css')) {
+          const html = url.endsWith('.html');
+          res.setHeader('Content-Type', html ? 'text/html; charset=utf-8' : 'text/css; charset=utf-8');
+          res.end(html ? page() : css());
+        } else next();
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'help.html', source: page() });
+      this.emitFile({ type: 'asset', fileName: 'help.css', source: css() });
     },
   };
 }
@@ -54,6 +82,7 @@ export default defineConfig({
   },
   plugins: [
     csp(),
+    help(),
     react(),
     VitePWA({
       // Новая версия не активируется молча: «Доступно обновление → Обновить» (SPEC §11)
@@ -78,6 +107,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,svg,png,webmanifest}'],
+        // help.html — отдельная страница, не адрес внутри приложения: её не подменять на index.html
         // При первой установке сразу взять страницу под управление: без сети приложение откроется
         // уже со следующего запуска. Новая версия по-прежнему ждёт «Обновить» (skipWaiting не включён)
         clientsClaim: true,

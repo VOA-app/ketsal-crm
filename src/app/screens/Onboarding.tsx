@@ -8,7 +8,7 @@ import { saveFile } from '../share';
 import { ru } from '../../i18n/ru';
 import { Bird, Logo } from '../components/Brand';
 import { Icon } from '../components/Icon';
-import { Check, Field } from '../components/kit';
+import { Check, Field, HelpLink } from '../components/kit';
 import { DEMO_ENABLED, useData, type RemoteCheck, type StartChoice } from '../store';
 import { connectYandex } from '../sync';
 import { ui } from '../ui';
@@ -211,6 +211,7 @@ export function Onboarding() {
             <span>{O.welcomeHome}</span>
           </div>
         </div>
+        <HelpLink className="onb-help" />
       </>
     );
     foot = (
