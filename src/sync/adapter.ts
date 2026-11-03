@@ -38,15 +38,41 @@ export class OfflineError extends Error {
   }
 }
 
-/** Ошибка fetch → OfflineError с адресом сервера. */
-export function offline(url: string, e: unknown): OfflineError {
-  let host = '';
+const hostOf = (url: string) => {
   try {
-    host = new URL(url).host;
+    return new URL(url).host;
   } catch {
-    // адрес не разобрался — оставим пустым
+    return '';
   }
-  return new OfflineError(host, e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+};
+
+/**
+ * Ошибка fetch → OfflineError с адресом сервера. Из текста ошибки убираются адреса:
+ * в ссылке скачивания Диска есть номер аккаунта и подпись.
+ */
+export function offline(url: string, e: unknown): OfflineError {
+  const raw = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+  const cause = raw
+    .split(' :: ')[0]
+    .replace(/https?:\/\/\S+/g, '…')
+    .slice(0, 160);
+  return new OfflineError(hostOf(url), cause);
+}
+
+/**
+ * Ответ 599 — его вернул service worker (public/sw-yandex.js), когда запрос к Яндексу не прошёл:
+ * kind 'cors' — сервер ответил, но браузер отклонил ответ; 'network' — сервер не ответил.
+ */
+export async function checkSwFailure(res: Response, url: string): Promise<void> {
+  if (res.status !== 599) return;
+  let j: { ketsalSw?: string; message?: string };
+  try {
+    j = (await res.json()) as typeof j;
+  } catch {
+    return;
+  }
+  if (!j.ketsalSw) return;
+  throw new OfflineError(hostOf(url), `sw ${j.ketsalSw}${j.message ? ` · ${j.message}` : ''}`);
 }
 
 /** Сервер ответил ошибкой. */

@@ -1,6 +1,6 @@
 // Яндекс Диск через REST API (SPEC §6.3). Доступ — только к папке приложения (`app:/`).
 // По итогам этапа 0: CORS есть везде, скачивание по ссылке — строго без Referer, иначе 403.
-import { AuthError, offline, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
+import { AuthError, checkSwFailure, offline, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 
@@ -22,6 +22,7 @@ export class YandexDiskAdapter implements StorageAdapter {
     } catch (e) {
       throw offline(API, e);
     }
+    await checkSwFailure(res, API);
     if (res.status === 401) throw new AuthError();
     return res;
   }
@@ -47,6 +48,7 @@ export class YandexDiskAdapter implements StorageAdapter {
     } catch (e) {
       throw offline(href, e);
     }
+    await checkSwFailure(g, href);
     if (!g.ok) throw new RemoteError(g.status);
     return new Uint8Array(await g.arrayBuffer());
   }
@@ -79,6 +81,7 @@ export class YandexDiskAdapter implements StorageAdapter {
     } catch (e) {
       throw offline(href, e);
     }
+    await checkSwFailure(put, href);
     if (!put.ok) throw new RemoteError(put.status);
   }
 

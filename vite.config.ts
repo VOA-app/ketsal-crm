@@ -81,14 +81,9 @@ export default defineConfig({
         // При первой установке сразу взять страницу под управление: без сети приложение откроется
         // уже со следующего запуска. Новая версия по-прежнему ждёт «Обновить» (skipWaiting не включён)
         clientsClaim: true,
-        // Запросы к Яндексу service worker отправляет сам, как есть: без кэша и со своим
-        // referrerPolicy: 'no-referrer' (иначе скачивание с Диска отвечает 403, SPEC §6.3)
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => /(^|\.)yandex\.(net|ru)$/.test(url.hostname),
-            handler: 'NetworkOnly',
-          },
-        ],
+        // Запросы к Яндексу — своим обработчиком (public/sw-yandex.js): Safari в service worker
+        // теряет referrerPolicy, и скачивание с Диска получает 403 (SPEC §6.3)
+        importScripts: ['sw-yandex.js'],
         // Заставки нужны только iOS при установке — в кэш приложения их не кладём
         globIgnores: ['splash/**'],
         // Приложение в корне сайта не должно перехватывать соседние разделы (прототип, проверки, демо)
