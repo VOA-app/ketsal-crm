@@ -3,6 +3,7 @@
 // Быстрый вход (Face ID, код) появится на этапе 6.
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { MIN_STRENGTH, passwordStrength } from '../../domain/password';
+import { offerQuickUnlock } from '../forms/SecurityForms';
 import { saveFile } from '../share';
 import { ru } from '../../i18n/ru';
 import { Bird, Logo } from '../components/Brand';
@@ -161,7 +162,10 @@ export function Onboarding() {
   const finish = async (choice: StartChoice) => {
     setBusy(true);
     try {
+      const password = pass[0];
       await useData.getState().finishVault(choice);
+      // Быстрый вход — сразу, пока пароль только что введён (SPEC §10.3)
+      setTimeout(() => offerQuickUnlock(password), 400);
     } catch {
       setBusy(false);
       ui().toast(O.failed);
@@ -177,6 +181,10 @@ export function Onboarding() {
     setBusy(false);
     if (r === 'wrong') setJoinError(ru.lock.wrong);
     else if (r === 'error') setJoinError(O.joinFailed);
+    else {
+      const password = joinPass;
+      setTimeout(() => offerQuickUnlock(password), 400);
+    }
   };
 
   let body;

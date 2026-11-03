@@ -6,6 +6,12 @@ import { pkcePair, randomState } from '../crypto/device';
 
 const PENDING = 'ketsal-oauth-pending';
 
+/** Стереть незавершённый вход (при «выйти и стереть данные»). */
+export function forgetPendingLogin() {
+  sessionStorage.removeItem(PENDING);
+  localStorage.removeItem(PENDING);
+}
+
 interface Pending {
   state: string;
   verifier: string;

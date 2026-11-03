@@ -107,8 +107,18 @@ export class KetsalDB extends Dexie {
   }
 }
 
+/** У демо-сборки своя база: на одном адресе с рабочей она не должна её трогать. */
+export const DB_NAME = import.meta.env?.VITE_DEMO === '1' ? 'ketsal-demo' : 'ketsal';
+
 let instance: KetsalDB | null = null;
-export const db = (): KetsalDB => (instance ??= new KetsalDB());
+export const db = (): KetsalDB => (instance ??= new KetsalDB(DB_NAME));
+
+/** Стереть всю базу этого устройства (ключ устройства, токен, данные, очереди). */
+export async function deleteDb(): Promise<void> {
+  const d = db();
+  instance = null;
+  await d.delete();
+}
 
 /** Для тестов: другая база (fake-indexeddb). */
 export function setDb(d: KetsalDB) {

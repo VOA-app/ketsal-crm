@@ -109,6 +109,10 @@ export class LocalStore {
     return (await this.db.meta.get(key))?.value as T | undefined;
   }
 
+  async deleteMeta(key: string): Promise<void> {
+    await this.db.meta.delete(key);
+  }
+
   async setMeta(key: string, value: unknown): Promise<void> {
     await this.db.meta.put({ key, value });
   }

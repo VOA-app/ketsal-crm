@@ -8,7 +8,7 @@ const IV_LEN = 12;
 const TAG_LEN = 16;
 const HEADER = MAGIC.length + 1 + IV_LEN;
 
-export type ObjectKind = 'shard' | 'catalog' | 'photo' | 'thumb' | 'verifier' | 'token';
+export type ObjectKind = 'shard' | 'catalog' | 'photo' | 'thumb' | 'verifier' | 'token' | 'quick';
 
 /** Шифротекст не открылся: неверный ключ, подмена байта, чужой AAD или откат ревизии. */
 export class DecryptError extends Error {

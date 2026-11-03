@@ -23,6 +23,7 @@ import { Settings } from './screens/Settings';
 import { Backup } from './screens/Backup';
 import { useData } from './store';
 import { ui, useUi } from './ui';
+import { startUpdates, useUpdate } from './update';
 
 const TABS: { id: string; icon: IconName; path: string; match: RegExp }[] = [
   { id: 'clients', icon: 'user', path: '/clients', match: /^\/(clients|client)\b/ },
@@ -132,14 +133,20 @@ function Shell() {
     return (
       <div className="app">
         {status === 'onboarding' ? <Onboarding /> : <Lock />}
+        <UpdateBar />
+        <SheetHost />
         <ToastHost />
       </div>
     );
   }
-  if (status === 'error') {
+  if (status === 'error' || status === 'otherTab') {
     return (
       <div className="app">
-        <Empty title={ru.common.loadFailed} />
+        {status === 'error' ? (
+          <Empty title={ru.common.loadFailed} />
+        ) : (
+          <Empty title={ru.common.otherTabTitle} text={ru.common.otherTabText} />
+        )}
       </div>
     );
   }
@@ -163,6 +170,7 @@ function Shell() {
         </Routes>
       </div>
       <TabBar />
+      <UpdateBar />
       <SheetHost />
       <Viewer />
       <ToastHost />
@@ -171,9 +179,25 @@ function Shell() {
   );
 }
 
+/** «Доступна новая версия → Обновить» поверх любого экрана. */
+function UpdateBar() {
+  const ready = useUpdate((u) => u.ready);
+  if (!ready) return null;
+  return (
+    <div className="update-bar" role="status">
+      <Icon name="refresh" />
+      <span>{ru.common.updateReady}</span>
+      <button type="button" className="btn btn-sm btn-primary" onClick={() => useUpdate.getState().apply()}>
+        {ru.common.updateDo}
+      </button>
+    </div>
+  );
+}
+
 export function App() {
   useEffect(() => {
     void useData.getState().init();
+    startUpdates();
   }, []);
   return (
     <HashRouter>

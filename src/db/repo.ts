@@ -1,13 +1,14 @@
 // Данные на этом устройстве (SPEC §4.5): тонкая обёртка над LocalStore для приложения.
 // В IndexedDB попадает только шифротекст. Исключение — заголовок vault.json (SPEC §5.3) и служебные
 // поля без данных клиентов (id устройства, ревизии синхронизации).
+import { generateDeviceKey } from '../crypto/device';
 import { requireSession } from '../crypto/session';
 import type { VaultHeader } from '../crypto/vault';
 import { defaultLists, defaultSettings, emptyData } from '../domain/defaults';
 import type { PhotoKind } from '../domain/photos';
 import type { Data, Lists, PhotoRef, Settings } from '../domain/types';
 import { COLLS, KIND_COLL } from './kinds';
-import { db } from './local';
+import { db, deleteDb } from './local';
 import { LocalStore, type Change } from './localStore';
 
 export type { Change };
@@ -29,6 +30,16 @@ export async function getVaultHeader(): Promise<VaultHeader | null> {
 
 export async function saveVaultHeader(h: VaultHeader): Promise<void> {
   await local().setMeta('vault', h);
+}
+
+/** Неизвлекаемый ключ этого устройства (токен Яндекса, обёртка кода быстрого входа). */
+export async function deviceKey(): Promise<CryptoKey> {
+  let key = await local().getMeta<CryptoKey>('deviceKey');
+  if (!key) {
+    key = await generateDeviceKey();
+    await local().setMeta('deviceKey', key);
+  }
+  return key;
 }
 
 // ── Записи ──
@@ -90,6 +101,18 @@ export async function clearLegacy(): Promise<void> {
     await d.devCatalog.clear();
     await d.devBlobs.clear();
   });
+}
+
+/** Сколько изменений и фото этого устройства ещё не ушло на Диск. */
+export async function unsentCounts(): Promise<{ changes: number; photos: number }> {
+  const d = db();
+  return { changes: await d.outbox.count(), photos: await d.photoUp.count() };
+}
+
+/** «Выйти и стереть данные»: вся база устройства удаляется. */
+export async function wipeLocal(): Promise<void> {
+  store = null;
+  await deleteDb();
 }
 
 /** Просим браузер не стирать базу при нехватке места (SPEC: на старте вызывать persist). */

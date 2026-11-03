@@ -379,8 +379,59 @@
     transform: rotate(360deg);
   }
 }
+/* «Уменьшить движение» в настройках iPhone: без переходов и анимаций во всём приложении.
+   Остаётся только медленный индикатор долгой операции — по нему видно, что работа идёт. */
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 2.4s;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+  .spinner {
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+/* Код из 6 цифр в шторке */
+.sheet-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+}
+.sheet-pin .keypad {
+  margin-top: 8px;
+}
+
+/* «Доступна новая версия» — над нижней панелью вкладок */
+.update-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  /* Выше экрана входа (200) и онбординга (150): обновиться можно и до входа */
+  z-index: 210;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-c);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  font-size: 15px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.update-bar > span {
+  flex: 1;
+  min-width: 0;
+}
+.update-bar > .i {
+  color: var(--accent-text);
+  flex: none;
 }

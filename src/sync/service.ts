@@ -1,10 +1,10 @@
 // Подключение к Яндекс Диску на этом устройстве: токен (зашифрован ключом устройства), адаптер,
 // запуск цикла синхронизации и перевод ошибок в понятные экрану состояния.
 import type { Token } from '../auth/yandex-oauth';
-import { generateDeviceKey, openToken, sealToken } from '../crypto/device';
+import { openToken, sealToken } from '../crypto/device';
 import { requireSession } from '../crypto/session';
 import type { VaultHeader } from '../crypto/vault';
-import { local } from '../db/repo';
+import { deviceKey, local } from '../db/repo';
 import { todayISO } from '../domain/dates';
 import { photoFiles, type PhotoKind } from '../domain/photos';
 import { AuthError, OfflineError, type StorageAdapter } from './adapter';
@@ -26,15 +26,6 @@ import { YandexDiskAdapter } from './yandexDiskAdapter';
 interface StoredToken {
   env: Uint8Array;
   expiresAt: string;
-}
-
-async function deviceKey(): Promise<CryptoKey> {
-  let key = await local().getMeta<CryptoKey>('deviceKey');
-  if (!key) {
-    key = await generateDeviceKey();
-    await local().setMeta('deviceKey', key);
-  }
-  return key;
 }
 
 export async function saveToken(t: Token): Promise<void> {
@@ -88,7 +79,13 @@ export function failureOf(e: unknown): SyncFailure {
 export const remoteHeader = (): Promise<VaultHeader | null> => fetchRemoteHeader(remote());
 
 export const runSync = (header: VaultHeader): Promise<SyncResult> =>
-  sync({ local: local(), remote: remote(), session: requireSession, header });
+  sync({
+    local: local(),
+    remote: remote(),
+    session: requireSession,
+    header,
+    saveHeader: (h) => local().setMeta('vault', h),
+  });
 
 export async function lastSyncAt(): Promise<string> {
   return (await local().getSyncMeta()).lastSyncAt;

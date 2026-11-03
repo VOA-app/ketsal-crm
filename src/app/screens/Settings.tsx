@@ -1,6 +1,6 @@
 // Настройки: окна напоминаний, тема, шаблоны сообщений, списки вариантов.
-// Автоблокировка, дата съёмки фото и инструменты для разработки.
-import { useState } from 'react';
+// Быстрый вход, смена пароля, автоблокировка, дата съёмки фото и инструменты для разработки.
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { todayISO } from '../../domain/dates';
 import { emptyData } from '../../domain/defaults';
@@ -9,10 +9,13 @@ import { clearBlobs } from '../../db/repo';
 import { TEMPLATE, ru } from '../../i18n/ru';
 import { Icon } from '../components/Icon';
 import { Chip, NavBar, Seg, SwitchRow } from '../components/kit';
+import { openChangePassword, openQuickSetup, turnQuickOff, wipeFlow } from '../forms/SecurityForms';
+import { passkeyAvailable, quickMode, type QuickMode } from '../security';
 import { DEMO_ENABLED, useData } from '../store';
-import { ui } from '../ui';
+import { ui, useUi } from '../ui';
 
 const S = ru.settings;
+const Q = ru.security;
 type NumKey = 'corrFrom' | 'corrTo' | 'updFrom' | 'updTo' | 'lostAfter';
 
 function NumSetting({ k }: { k: NumKey }) {
@@ -53,6 +56,44 @@ function NumSetting({ k }: { k: NumKey }) {
         aria-label={title}
       />
     </label>
+  );
+}
+
+/** Быстрый вход на этом устройстве: Face ID, код или только пароль. */
+function QuickSetting() {
+  const [mode, setMode] = useState<QuickMode | null>(null);
+  const [face, setFace] = useState(false);
+  const sheets = useUi((u) => u.sheets.length);
+  // Шторка настройки закрылась — перечитать, что включено
+  useEffect(() => {
+    let alive = true;
+    void quickMode().then((m) => alive && setMode(m));
+    void passkeyAvailable().then((f) => alive && setFace(f));
+    return () => {
+      alive = false;
+    };
+  }, [sheets]);
+  const pick = async (m: QuickMode) => {
+    if (m === mode) return;
+    if (m === 'password') {
+      await turnQuickOff();
+      setMode('password');
+    } else openQuickSetup(m);
+  };
+  const modes: QuickMode[] = face || mode === 'faceid' ? ['faceid', 'pin', 'password'] : ['pin', 'password'];
+  return (
+    <div className="field">
+      <span className="field-label">{Q.quick}</span>
+      <div className="chips">
+        {modes.map((m) => (
+          <Chip key={m} label={Q.quickModes[m]} on={mode === m} onClick={() => void pick(m)} />
+        ))}
+      </div>
+      <p className="hint mt-8 mb-0">
+        {mode === 'pin' ? `${Q.quickHintPin} ` : ''}
+        {Q.quickHintDevice}
+      </p>
+    </div>
   );
 }
 
@@ -183,6 +224,7 @@ export function Settings() {
         </div>
         <div className="section-title">{S.security}</div>
         <div className="card">
+          <QuickSetting />
           <div className="field mb-0">
             <span className="field-label">{S.autoLock}</span>
             <div className="chips">
@@ -197,6 +239,16 @@ export function Settings() {
             </div>
             <p className="hint mt-8 mb-0">{S.autoLockHint}</p>
           </div>
+        </div>
+        <div className="menu">
+          <button type="button" className="menu-item" onClick={openChangePassword}>
+            <Icon name="key" />
+            <span className="t">{Q.changePass}</span>
+          </button>
+          <button type="button" className="menu-item danger" onClick={() => void wipeFlow()}>
+            <Icon name="trash" />
+            <span className="t">{Q.wipe}</span>
+          </button>
         </div>
         <div className="section-title">{S.photos}</div>
         <div className="card card--tight">

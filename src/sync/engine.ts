@@ -6,7 +6,7 @@
 // синхронизации увидит чужие имена файлов, сольёт их со своими данными и отправит недостающее.
 import { aadFor, open, seal } from '../crypto/aead';
 import type { Session } from '../crypto/session';
-import type { VaultHeader } from '../crypto/vault';
+import { checkVerifier, passwordStamp, type VaultHeader } from '../crypto/vault';
 import { pack, SHARD_IDS, unpack } from '../db/codec';
 import type { LocalStore } from '../db/localStore';
 import type { HLC } from '../domain/hlc';
@@ -59,6 +59,8 @@ export interface SyncDeps {
   remote: StorageAdapter;
   session: () => Session;
   header: VaultHeader;
+  /** Сохранить на устройстве более новый vault.json с Диска (пароль сменили на другом устройстве) */
+  saveHeader?: (h: VaultHeader) => Promise<void>;
 }
 
 export interface SyncResult {
@@ -115,11 +117,18 @@ async function readShard(d: SyncDeps, id: string, ref: { rev: number; file: stri
   }
 }
 
-/** Проверить vault.json на Диске: положить свой, если его нет; другое хранилище — ошибка. */
+const writeVault = (d: SyncDeps, h: VaultHeader) =>
+  d.remote.write(VAULT, new TextEncoder().encode(JSON.stringify(h, null, 2)));
+
+/**
+ * Проверить vault.json на Диске: положить свой, если его нет; другое хранилище — ошибка.
+ * Сменили мастер-пароль — новее тот заголовок, где пароль меняли позже: свой отправляем на Диск,
+ * чужой сохраняем на устройстве (если его проверочная строка открывается нашим ключом).
+ */
 async function ensureVault(d: SyncDeps) {
   const bytes = await d.remote.read(VAULT);
   if (!bytes) {
-    await d.remote.write(VAULT, new TextEncoder().encode(JSON.stringify(d.header, null, 2)));
+    await writeVault(d, d.header);
     return;
   }
   let remote: VaultHeader;
@@ -129,6 +138,17 @@ async function ensureVault(d: SyncDeps) {
     throw new RemoteCorruptError(VAULT);
   }
   if (remote.vaultId !== d.header.vaultId) throw new OtherVaultError();
+  const mine = passwordStamp(d.header);
+  const theirs = passwordStamp(remote);
+  if (mine > theirs) await writeVault(d, d.header);
+  else if (theirs > mine && d.saveHeader) {
+    try {
+      await checkVerifier(d.session().dek, remote);
+    } catch {
+      throw new RemoteCorruptError(VAULT);
+    }
+    await d.saveHeader(remote);
+  }
 }
 
 /** vault.json с Диска — для второго устройства, у которого хранилища ещё нет. */

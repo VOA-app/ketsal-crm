@@ -6,6 +6,7 @@ import { emptyData } from '../domain/defaults';
 import { buildIndex, type DomainIndex } from '../domain/indexing';
 import type { Data, Entity, Lists, PhotoRef, Settings } from '../domain/types';
 import { COLLS, type Coll, type Item } from '../db/kinds';
+import { DB_NAME } from '../db/local';
 import { endSession, startSession } from '../crypto/session';
 import {
   createVault,
@@ -59,7 +60,8 @@ export interface Tx {
 
 interface DataState {
   /** onboarding — хранилища ещё нет; locked — есть, но ключа в памяти нет */
-  status: 'loading' | 'onboarding' | 'locked' | 'ready' | 'error';
+  /** otherTab — приложение уже открыто в другой вкладке или окне с той же базой */
+  status: 'loading' | 'onboarding' | 'locked' | 'ready' | 'error' | 'otherTab';
   data: Data;
   idx: DomainIndex;
   unlockedAt: number;
@@ -75,6 +77,8 @@ interface DataState {
   /** На устройстве остались открытые данные пробной версии этапа 1 */
   legacyExists(): Promise<boolean>;
   unlock(password: string): Promise<UnlockResult>;
+  /** Вход уже развёрнутым ключом (быстрый вход, app/security.ts) */
+  openWith(dek: CryptoKey, vaultId: string): Promise<UnlockResult>;
   checkRecovery(code: string): Promise<UnlockResult>;
   /** Забытый пароль: ключ восстановления и новый пароль */
   resetPassword(code: string, newPassword: string): Promise<UnlockResult>;
@@ -158,6 +162,25 @@ let remoteVault: VaultHeader | null = null;
 /** Хранилище, созданное в онбординге, но ещё не записанное: ждёт проверки ключа восстановления. */
 let pending: CreatedVault | null = null;
 
+/**
+ * Занять базу этого устройства для этой вкладки; false — она уже открыта в другой.
+ * Ответ запоминается на всю вкладку: повторный запуск кода в ней (StrictMode, обновление модулей
+ * при разработке) не должен принимать саму себя за другую вкладку.
+ */
+function holdTabLock(): Promise<boolean> {
+  const g = globalThis as typeof globalThis & { __ketsalTabLock?: Promise<boolean> };
+  const locks = navigator.locks;
+  if (!locks) return Promise.resolve(true);
+  g.__ketsalTabLock ??= new Promise((resolve) => {
+    void locks.request(`${DB_NAME}-tab`, { ifAvailable: true }, (lock) => {
+      resolve(!!lock);
+      // Держим, пока вкладка открыта
+      return lock ? new Promise<void>(() => undefined) : undefined;
+    });
+  });
+  return g.__ketsalTabLock;
+}
+
 export const useData = create<DataState>((set, get) => {
   const T = todayISO();
   const initial = emptyData(T);
@@ -189,9 +212,16 @@ export const useData = create<DataState>((set, get) => {
     unlockedAt: 0,
 
     async init() {
+      // Одна вкладка на базу: у каждой вкладки свои данные в памяти, вдвоём они затирали бы друг друга
+      if (!(await holdTabLock())) {
+        set({ status: 'otherTab' });
+        return;
+      }
       try {
         void requestPersist();
-        if (DEMO_ENABLED && import.meta.env.VITE_DEV_REMOTE === '1') enableDevRemote();
+        // Демо-сборка никогда не подключается к настоящему Диску: облако только в памяти вкладки
+        if (DEMO_ENABLED && (import.meta.env.VITE_DEV_REMOTE === '1' || import.meta.env.VITE_DEMO === '1'))
+          enableDevRemote();
         // Вернулись со страницы входа Яндекса: обменять код на токен
         const login = await completeLogin();
         if (login && 'token' in login) await saveToken(login.token);
@@ -281,6 +311,17 @@ export const useData = create<DataState>((set, get) => {
       } catch (e) {
         endSession();
         if (e instanceof WrongSecretError) return 'wrong';
+        console.error(e instanceof Error ? e.name : 'unlock error');
+        return 'error';
+      }
+    },
+
+    async openWith(dek, vaultId) {
+      try {
+        await openSession(dek, vaultId);
+        return 'ok';
+      } catch (e) {
+        endSession();
         console.error(e instanceof Error ? e.name : 'unlock error');
         return 'error';
       }

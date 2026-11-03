@@ -34,18 +34,35 @@ jobs:
           npm run lint
           npm test
 
-      # До этапа 6 публикуем стартовую страницу, прототип, проверки этапа 0
-      # и пробную сборку приложения с демо-данными в /app/ (данные — только на устройстве).
-      # На этапе 6 приложение переедет в корень сайта.
-      - name: Собрать сайт
+      # Рабочее приложение — в корне сайта (SPEC §11). /app/ — та же рабочая сборка для значков
+      # «Домой», установленных до этапа 6. /demo/ — с выдуманными данными, своей базой на устройстве
+      # и облаком в памяти: к настоящему Диску демо не подключается.
+      - name: Рабочее приложение
+        env:
+          BASE: /ketsal-crm/
+        run: |
+          npm run build
+          mkdir -p _site
+          cp -r dist/. _site/
+
+      - name: Рабочее приложение по старому адресу /app/
         env:
           BASE: /ketsal-crm/app/
+        run: |
+          npm run build
+          cp -r dist _site/app
+
+      - name: Демо
+        env:
+          BASE: /ketsal-crm/demo/
           VITE_DEMO: '1'
         run: |
           npm run build
+          cp -r dist _site/demo
+
+      - name: Прототип и проверки этапа 0
+        run: |
           mkdir -p _site/prototype _site/spikes
-          cp -r dist _site/app
-          cp site/index.html _site/index.html
           cp prototype/index.html _site/prototype/index.html
           cp -r spikes/. _site/spikes/
           rm -f _site/spikes/RESULTS.md

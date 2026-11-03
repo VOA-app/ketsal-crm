@@ -38,9 +38,11 @@ function gitCommit(): string {
   }
 }
 
+// На GitHub Pages приложение живёт в подпапке репозитория; путь задаёт сборка (BASE).
+const BASE = process.env.BASE ?? '/';
+
 export default defineConfig({
-  // На GitHub Pages приложение живёт в подпапке репозитория; путь задаёт сборка (BASE).
-  base: process.env.BASE ?? '/',
+  base: BASE,
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
     __APP_COMMIT__: JSON.stringify(gitCommit()),
@@ -76,6 +78,13 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,svg,png,webmanifest}'],
+        // При первой установке сразу взять страницу под управление: без сети приложение откроется
+        // уже со следующего запуска. Новая версия по-прежнему ждёт «Обновить» (skipWaiting не включён)
+        clientsClaim: true,
+        // Заставки нужны только iOS при установке — в кэш приложения их не кладём
+        globIgnores: ['splash/**'],
+        // Приложение в корне сайта не должно перехватывать соседние разделы (прототип, проверки, демо)
+        navigateFallbackDenylist: BASE === '/ketsal-crm/' ? [/^\/ketsal-crm\/(app|demo|prototype|spikes)(\/|$)/] : [],
       },
     }),
   ],

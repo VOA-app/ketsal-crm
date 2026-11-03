@@ -1,17 +1,35 @@
-// Экран входа (SPEC §5.4): мастер-пароль; если забыт — ключ восстановления и новый пароль.
-// Быстрый вход (Face ID, код) появится на этапе 6.
-import { useState, type FormEvent } from 'react';
+// Экран входа (SPEC §5.4): быстрый вход (Face ID или код, если включён на этом устройстве),
+// мастер-пароль; если пароль забыт — ключ восстановления и новый пароль.
+import { useEffect, useState, type FormEvent } from 'react';
 import { ru } from '../../i18n/ru';
 import { Bird, Logo } from '../components/Brand';
+import { Icon } from '../components/Icon';
+import { PinPad } from '../components/PinPad';
+import { quickMode, unlockByFaceId, unlockByPin, type QuickMode } from '../security';
 import { useData } from '../store';
 import { PasswordFields, passwordReady } from './Onboarding';
 
 const L = ru.lock;
 
-type Mode = 'password' | 'recovery' | 'newPassword';
+type Mode = 'loading' | 'faceid' | 'pin' | 'password' | 'recovery' | 'newPassword';
 
 export function Lock() {
-  const [mode, setMode] = useState<Mode>('password');
+  const [mode, setMode] = useState<Mode>('loading');
+  const [quick, setQuick] = useState<QuickMode>('password');
+  const [shakeKey, setShakeKey] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    quickMode()
+      .catch(() => 'password' as const)
+      .then((m) => {
+        if (!alive) return;
+        setQuick(m);
+        setMode(m);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [pass, setPass] = useState<[string, string]>(['', '']);
@@ -52,6 +70,78 @@ export function Lock() {
     setError('');
   };
 
+  const faceId = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    const r = await unlockByFaceId();
+    setBusy(false);
+    if (r === 'cancel') setError(L.faceFailed);
+    else if (r !== 'ok') setError(L.faceBroken);
+  };
+
+  const pinDone = async (pin: string) => {
+    setBusy(true);
+    setError('');
+    const r = await unlockByPin(pin);
+    setBusy(false);
+    if (r === 'ok') return;
+    if (r === 'reset') {
+      setQuick('password');
+      setMode('password');
+      setError(L.pinReset);
+    } else if (r === 'error') setError(L.failed);
+    else {
+      setShakeKey((k) => k + 1);
+      setError(L.pinWrong(r.left));
+    }
+  };
+
+  const toQuick =
+    quick === 'password' ? null : (
+      <button type="button" className="btn btn-ghost btn-block" onClick={() => switchTo(quick)}>
+        {quick === 'faceid' ? L.toFace : L.toPin}
+      </button>
+    );
+
+  if (mode === 'loading') return <div className="lock show" />;
+
+  if (mode === 'faceid' || mode === 'pin') {
+    return (
+      <div className="lock show">
+        <div className="lock-bird">
+          <Bird />
+        </div>
+        <div className="lock-logo">
+          <Logo label="Кетсаль" />
+        </div>
+        <div className="lock-sub">{mode === 'pin' ? L.pinTitle : L.faceTitle}</div>
+        {mode === 'pin' ? (
+          <>
+            <PinPad onDone={(p) => void pinDone(p)} disabled={busy} shakeKey={shakeKey} />
+            <div className="lock-hint mt-8" role="alert">
+              {busy ? L.opening : error}
+            </div>
+          </>
+        ) : (
+          <div className="lock-pass">
+            <div className="lock-hint" role="alert">
+              {busy ? L.opening : error}
+            </div>
+            <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void faceId()}>
+              <Icon name="faceid" /> {L.faceBtn}
+            </button>
+          </div>
+        )}
+        <div className="lock-links">
+          <button type="button" className="btn-link" onClick={() => switchTo('password')}>
+            {L.toMaster}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="lock show">
       <div className="lock-bird">
@@ -80,6 +170,7 @@ export function Lock() {
             <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
               {busy ? L.opening : L.unlock}
             </button>
+            {toQuick}
             <button type="button" className="btn btn-ghost btn-block" onClick={() => switchTo('recovery')}>
               {L.forgot}
             </button>

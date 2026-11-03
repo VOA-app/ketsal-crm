@@ -25,7 +25,15 @@ export interface VaultHeader {
   };
   /** Известная строка, зашифрованная DEK: подтверждает, что ключ верный */
   verifier: { env: string };
+  /**
+   * Когда последний раз меняли мастер-пароль (ISO). По нему устройства решают, чей vault.json новее:
+   * новый пароль доходит до других устройств через Диск. Нет поля — пароль не меняли с создания.
+   */
+  passwordChangedAt?: string;
 }
+
+/** Время обёртки паролем: для сравнения заголовков на разных устройствах. */
+export const passwordStamp = (h: VaultHeader): string => h.passwordChangedAt ?? h.createdAt;
 
 /** Неверный пароль или ключ восстановления. */
 export class WrongSecretError extends Error {
@@ -41,8 +49,14 @@ async function makeVerifier(dek: CryptoKey, vaultId: string) {
   return { env: toB64(await seal(dek, utf8(VERIFIER), aadFor(vaultId, 'verifier', 'vault', 1))) };
 }
 
-async function checkVerifier(dek: CryptoKey, header: VaultHeader) {
-  const pt = await open(dek, fromB64(header.verifier.env), aadFor(header.vaultId, 'verifier', 'vault', 1));
+/** Проверить, что ключ открывает это хранилище (иначе WrongSecretError). */
+export async function checkVerifier(dek: CryptoKey, header: VaultHeader) {
+  let pt: Uint8Array;
+  try {
+    pt = await open(dek, fromB64(header.verifier.env), aadFor(header.vaultId, 'verifier', 'vault', 1));
+  } catch {
+    throw new WrongSecretError();
+  }
   if (new TextDecoder().decode(pt) !== VERIFIER) throw new WrongSecretError();
 }
 
@@ -116,6 +130,7 @@ export async function setPassword(
   secret: { password: string } | { recovery: string },
   newPassword: string,
   iterations?: number,
+  now = new Date().toISOString(),
 ): Promise<VaultHeader> {
   const raw =
     'password' in secret
@@ -126,5 +141,6 @@ export async function setPassword(
     ...header,
     kdf,
     wrappedDek: { ...header.wrappedDek, password: await wrapDek(raw, await passwordKek(newPassword, kdf)) },
+    passwordChangedAt: now,
   };
 }
