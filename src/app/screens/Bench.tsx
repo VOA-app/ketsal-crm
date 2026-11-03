@@ -35,16 +35,20 @@ const fmtMs = (ms: number) => (ms < 1000 ? `${ms} мс` : `${(ms / 1000).toFixed
 
 function noteOf(r: BenchRow): string {
   if (r.step === 'photoProcess' && r.count) return B.perPhoto(Math.round(r.ms / r.count));
-  return [r.count ? B.count(r.count) : '', r.mb ? B.mb(r.mb) : ''].filter(Boolean).join(', ');
+  return [r.count ? B.count(r.count) : '', r.mb ? B.mb(r.mb) : '', r.error ? B.stopped(r.error) : '']
+    .filter(Boolean)
+    .join(', ');
 }
 
 export function Bench() {
   const [rows, setRows] = useState<BenchRow[]>([]);
   const [state, setState] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
+  const [error, setError] = useState('');
 
   const run = async () => {
     setState('running');
     setRows([]);
+    setError('');
     try {
       const { runBench } = await import('../../dev/bench');
       // Обработка снимков с камеры: 12 Мп → 2560 px, как при добавлении фото в процедуру
@@ -62,7 +66,9 @@ export function Bench() {
       });
       setState('done');
     } catch (e) {
-      console.error(e instanceof Error ? e.name : 'bench error');
+      const name = e instanceof Error ? e.name : 'Error';
+      console.error(name);
+      setError(name);
       setState('failed');
     }
   };
@@ -70,6 +76,7 @@ export function Bench() {
   const copy = async () => {
     const text = [
       `${B.title} · ${navigator.userAgent}`,
+      ...(error ? [B.failedWith(error)] : []),
       ...rows.map((r) => `${B.steps[r.step]}: ${fmtMs(r.ms)}${noteOf(r) ? ` (${noteOf(r)})` : ''}`),
     ].join('\n');
     try {
@@ -98,7 +105,9 @@ export function Bench() {
         </div>
         {rows.length > 0 && (
           <>
-            <div className="section-title">{state === 'done' ? B.done : state === 'failed' ? B.failed : B.running}</div>
+            <div className="section-title">
+              {state === 'done' ? B.done : state === 'failed' ? B.failedWith(error) : B.running}
+            </div>
             <div className="card card--tight">
               <table className="bench-table">
                 <thead>

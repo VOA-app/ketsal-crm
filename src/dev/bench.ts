@@ -45,6 +45,8 @@ export interface BenchRow {
   count?: number;
   /** Объём, МБ */
   mb?: number;
+  /** Шаг остановился на ошибке (например, не хватило места) — имя ошибки */
+  error?: string;
 }
 
 export interface BenchOptions {
@@ -123,20 +125,32 @@ export async function runBench(o: BenchOptions): Promise<BenchRow[]> {
       A.writeChange({ puts: [{ coll: 'procedures', item: { ...p0, note: 'замер' } as Entity<object> }], dels: [] }),
     );
 
+    // Не хватило места (во вкладке Safari лимит меньше, чем у значка «Домой») — записываем сколько
+    // получилось и идём дальше: синхронизация и копия замеряются на том, что есть
     let photoBytes = 0;
+    let written = 0;
+    let photoError = '';
     await time(
       'photosWrite',
       async () => {
-        for (let i = 0; i < refs.length; i += 1) {
-          const bytes = await o.photoBytes(i);
-          photoBytes += bytes.length;
-          await A.putBlobs([
-            { id: refs[i].blobId, blob: new Blob([bytes.slice().buffer as ArrayBuffer]), kind: 'photo' },
-            { id: refs[i].thumbId, blob: new Blob([bytes.slice(0, 30_000).buffer as ArrayBuffer]), kind: 'thumb' },
-          ]);
+        try {
+          for (; written < refs.length; written += 1) {
+            const bytes = await o.photoBytes(written);
+            await A.putBlobs([
+              { id: refs[written].blobId, blob: new Blob([bytes.slice().buffer as ArrayBuffer]), kind: 'photo' },
+              {
+                id: refs[written].thumbId,
+                blob: new Blob([bytes.slice(0, 30_000).buffer as ArrayBuffer]),
+                kind: 'thumb',
+              },
+            ]);
+            photoBytes += bytes.length;
+          }
+        } catch (e) {
+          photoError = e instanceof Error ? e.name : 'Error';
         }
       },
-      () => ({ count: refs.length, mb: Math.round(photoBytes / MB) }),
+      () => ({ count: written, mb: Math.round(photoBytes / MB), error: photoError || undefined }),
     );
 
     const remote = new MockAdapter();
@@ -145,7 +159,7 @@ export async function runBench(o: BenchOptions): Promise<BenchRow[]> {
     await time(
       'photosUpload',
       () => uploadPhotos({ local: A, remote, refs: () => photoRefs(A.data(o.today)) }),
-      () => ({ count: refs.length * 2 }),
+      () => ({ count: written * 2 }),
     );
 
     const B = new LocalStore(dbB, () => session);
