@@ -10,7 +10,8 @@ import { checkVerifier, passwordStamp, type VaultHeader } from '../crypto/vault'
 import { pack, SHARD_IDS, unpack } from '../db/codec';
 import type { LocalStore } from '../db/localStore';
 import type { HLC } from '../domain/hlc';
-import type { StorageAdapter } from './adapter';
+import { sha256Hex } from '../crypto/hash';
+import { UnavailableError, type StorageAdapter } from './adapter';
 import { fixDuplicateCardNos, mergeCatalog, mergeRecords, type CatalogState, type Envelope } from './merge';
 
 const VAULT = 'vault.json';
@@ -67,6 +68,8 @@ export interface SyncResult {
   /** Данные на устройстве изменились — экраны нужно обновить */
   changed: boolean;
   uploaded: number;
+  /** Часть файлов на Диске не скачивалась: данные этого устройства отправлены заново */
+  recovered: boolean;
 }
 
 // ── Файл на Диске: 4 байта ревизии + конверт KTS1 (ревизия входит и в AAD) ──
@@ -87,6 +90,27 @@ const json = (x: unknown) => JSON.stringify(x);
 export const sortById = (r: Envelope[]) => r.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
 export const shardFileName = (id: string, rev: number, device: string) => `${id}-${rev}-${device}.enc`;
+
+/** Файл на Диске есть, но не скачивается (UnavailableError). */
+const LOST = 'lost' as const;
+
+async function tryRead<T>(fn: () => Promise<T>): Promise<T | typeof LOST> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof UnavailableError) return LOST;
+    throw e;
+  }
+}
+
+/**
+ * Насколько перескакивает ревизия каталога, если прежний каталог не скачивается: его ревизию
+ * мы не знаем, а новая должна быть выше любой, что успело записать другое устройство.
+ */
+const CATALOG_REV_JUMP = 1000;
+
+/** Ревизия из имени файла шарда `<шард>-<ревизия>-<устройство>.enc`. */
+const revOf = (file: string | undefined) => Number(/^[0-9a-f]{2}-(\d+)-/.exec(file ?? '')?.[1] ?? 0);
 
 async function readCatalog(d: SyncDeps): Promise<RemoteCatalog | null> {
   const bytes = await d.remote.read(CATALOG);
@@ -125,11 +149,12 @@ const writeVault = (d: SyncDeps, h: VaultHeader) =>
  * Сменили мастер-пароль — новее тот заголовок, где пароль меняли позже: свой отправляем на Диск,
  * чужой сохраняем на устройстве (если его проверочная строка открывается нашим ключом).
  */
-async function ensureVault(d: SyncDeps) {
-  const bytes = await d.remote.read(VAULT);
-  if (!bytes) {
+async function ensureVault(d: SyncDeps): Promise<boolean> {
+  const bytes = await tryRead(() => d.remote.read(VAULT));
+  // Нет файла или он не скачивается (сбой Яндекса): кладём свой — тот же заголовок этого хранилища
+  if (!bytes || bytes === LOST) {
     await writeVault(d, d.header);
-    return;
+    return bytes === LOST;
   }
   let remote: VaultHeader;
   try {
@@ -149,6 +174,7 @@ async function ensureVault(d: SyncDeps) {
     }
     await d.saveHeader(remote);
   }
+  return false;
 }
 
 /** vault.json с Диска — для второго устройства, у которого хранилища ещё нет. */
@@ -165,18 +191,27 @@ async function once(d: SyncDeps): Promise<SyncResult & { conflict: boolean }> {
   const device = await local.deviceId();
   const meta = await local.getSyncMeta();
 
-  // 1. Каталог с Диска; откат ниже уже виденного — стоп
-  const rc = await readCatalog(d);
+  // 1. Каталог с Диска; откат ниже уже виденного — стоп. Не скачивается — работаем без него:
+  //    данные этого устройства уйдут на Диск новыми файлами, другие устройства сольют их со своими
+  const rcRead = await tryRead(() => readCatalog(d));
+  const catalogLost = rcRead === LOST;
+  const rc = rcRead === LOST ? null : rcRead;
   if (rc && rc.catalogRev < meta.remoteCatalogRev) throw new RollbackError();
 
-  // 2. Шарды, у которых на Диске другой файл, чем это устройство видело: скачать и слить
+  // 2. Шарды, у которых на Диске другой файл, чем это устройство видело: скачать и слить.
+  //    Не скачивается — сливать нечего, отправим свою версию шарда
   const merged = new Map<string, Envelope[]>();
   const remoteRecords = new Map<string, Envelope[]>();
+  const lostShards = new Set<string>();
   for (const id of SHARD_IDS) {
     const ref = rc?.shardFiles[id];
     if (!ref || ref.file === meta.remoteShardFiles[id]) continue;
-    const recs = await readShard(d, id, ref);
-    if (!recs) return { changed: false, uploaded: 0, conflict: true };
+    const recs = await tryRead(() => readShard(d, id, ref));
+    if (recs === LOST) {
+      lostShards.add(id);
+      continue;
+    }
+    if (!recs) return { changed: false, uploaded: 0, conflict: true, recovered: false };
     remoteRecords.set(id, recs);
     merged.set(id, mergeRecords(local.shardEnvelopes(id), recs));
   }
@@ -187,6 +222,7 @@ async function once(d: SyncDeps): Promise<SyncResult & { conflict: boolean }> {
   const all = SHARD_IDS.flatMap((id) => merged.get(id) ?? local.shardEnvelopes(id));
   const fixes = fixDuplicateCardNos(all, () => local.clock!.tick());
   const changed = await local.applyMerged(merged, mergedCat, fixes);
+  const recovered = catalogLost || lostShards.size > 0;
 
   // 3–4. Что отправить: изменённое на устройстве и то, чего на Диске не хватает после слияния
   const pending = await local.pending();
@@ -195,7 +231,8 @@ async function once(d: SyncDeps): Promise<SyncResult & { conflict: boolean }> {
     const mine = sortById(local.shardEnvelopes(id));
     const theirs = remoteRecords.get(id);
     const ref = rc?.shardFiles[id];
-    if (theirs) {
+    if (lostShards.has(id) || (catalogLost && mine.length)) toUpload.push(id);
+    else if (theirs) {
       if (json(mine) !== json(sortById(theirs))) toUpload.push(id);
     } else if (pending.ids.has(id) || (!ref && mine.length)) toUpload.push(id);
   }
@@ -208,13 +245,14 @@ async function once(d: SyncDeps): Promise<SyncResult & { conflict: boolean }> {
       remoteShardFiles: Object.fromEntries(Object.entries(rc.shardFiles).map(([k, v]) => [k, v.file])),
       lastSyncAt: new Date().toISOString(),
     });
-    return { changed, uploaded: 0, conflict: false };
+    return { changed, uploaded: 0, conflict: false, recovered };
   }
 
   const { dek, vaultId } = d.session();
-  const files: Record<string, { rev: number; file: string }> = { ...(rc?.shardFiles ?? {}) };
+  // Каталог не скачался — ссылки только на то, что отправим сейчас
+  const files: Record<string, { rev: number; file: string }> = catalogLost ? {} : { ...(rc?.shardFiles ?? {}) };
   for (const id of toUpload) {
-    const rev = (files[id]?.rev ?? 0) + 1;
+    const rev = Math.max(files[id]?.rev ?? 0, revOf(meta.remoteShardFiles[id])) + 1;
     const body: RemoteShard = { format: 2, records: sortById(local.shardEnvelopes(id)) };
     const file = shardFileName(id, rev, device);
     await d.remote.write(
@@ -225,15 +263,16 @@ async function once(d: SyncDeps): Promise<SyncResult & { conflict: boolean }> {
   }
 
   // 6. Каталог с новыми ссылками
-  const catRev = Math.max(rc?.catalogRev ?? 0, meta.remoteCatalogRev) + 1;
+  const catRev = catalogLost
+    ? meta.remoteCatalogRev + CATALOG_REV_JUMP
+    : Math.max(rc?.catalogRev ?? 0, meta.remoteCatalogRev) + 1;
   const cat: RemoteCatalog = { format: 2, catalogRev: catRev, shardFiles: files, ...local.catalogState() };
-  const catEnv = await seal(dek, pack(cat), aadFor(vaultId, 'catalog', 'catalog', catRev));
-  await d.remote.write(CATALOG, frame(catRev, catEnv));
+  const catBytes = frame(catRev, await seal(dek, pack(cat), aadFor(vaultId, 'catalog', 'catalog', catRev)));
+  await d.remote.write(CATALOG, catBytes);
 
-  // 7. Перечитать каталог: если его успело переписать другое устройство — повторить цикл
-  const check = await readCatalog(d);
-  if (!check || json(check.shardFiles) !== json(files) || check.catalogRev !== catRev) {
-    return { changed, uploaded: toUpload.length, conflict: true };
+  // 7. Каталог на Диске — наш? Если его успело переписать другое устройство — повторить цикл
+  if (!(await catalogIsOurs(d, catBytes, files, catRev))) {
+    return { changed, uploaded: toUpload.length, conflict: true, recovered };
   }
   await local.clearPending(pending.maxSeq);
   await local.setSyncMeta({
@@ -244,7 +283,25 @@ async function once(d: SyncDeps): Promise<SyncResult & { conflict: boolean }> {
 
   // 8. Сборка мусора: старые версии шардов, на которые каталог давно не ссылается
   await collectGarbage(d, files);
-  return { changed, uploaded: toUpload.length, conflict: false };
+  return { changed, uploaded: toUpload.length, conflict: false, recovered };
+}
+
+/**
+ * Проверка записи каталога: по SHA-256 из сведений о файле (без скачивания — оно может не работать),
+ * а если хранилище его не сообщает — перечитав каталог.
+ */
+async function catalogIsOurs(
+  d: SyncDeps,
+  bytes: Uint8Array,
+  files: Record<string, { rev: number; file: string }>,
+  catRev: number,
+): Promise<boolean> {
+  const m = await d.remote.getMeta(CATALOG);
+  if (m?.sha256) return m.sha256 === (await sha256Hex(bytes));
+  const check = await tryRead(() => readCatalog(d));
+  // Не скачивается и проверить нечем — считаем записанным: чужие правки остались на том устройстве
+  if (check === LOST) return true;
+  return !!check && json(check.shardFiles) === json(files) && check.catalogRev === catRev;
 }
 
 const sortKeys = (c: CatalogState) => ({
@@ -269,14 +326,15 @@ async function collectGarbage(d: SyncDeps, files: Record<string, { rev: number; 
 
 /** Синхронизация: до трёх попыток, если параллельно писало другое устройство. */
 export async function sync(d: SyncDeps): Promise<SyncResult> {
-  await ensureVault(d);
+  let recovered = await ensureVault(d);
   let changed = false;
   let uploaded = 0;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const r = await once(d);
     changed ||= r.changed;
     uploaded += r.uploaded;
-    if (!r.conflict) return { changed, uploaded };
+    recovered ||= r.recovered;
+    if (!r.conflict) return { changed, uploaded, recovered };
   }
-  return { changed, uploaded };
+  return { changed, uploaded, recovered };
 }

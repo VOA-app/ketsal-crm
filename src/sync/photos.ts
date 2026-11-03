@@ -11,7 +11,7 @@ import { DecryptError } from '../crypto/aead';
 import type { LocalStore } from '../db/localStore';
 import { photoFiles, photoRefs, type PhotoKind } from '../domain/photos';
 import type { PhotoRef } from '../domain/types';
-import { RemoteError, type StorageAdapter } from './adapter';
+import { RemoteError, UnavailableError, type StorageAdapter } from './adapter';
 
 export const PHOTO_DIR: Record<PhotoKind, string> = { photo: 'blobs', thumb: 'thumbs' };
 export const photoPath = (kind: PhotoKind, id: string) => `${PHOTO_DIR[kind]}/${id}.enc`;
@@ -68,7 +68,14 @@ export async function deleteRemotePhotos(d: PhotoDeps): Promise<void> {
 
 /** Скачать файл с Диска и сохранить на устройстве. null — файла там нет (ещё не загружен или удалён). */
 export async function fetchPhoto(d: Pick<PhotoDeps, 'local' | 'remote'>, id: string, kind: PhotoKind) {
-  const ct = await d.remote.read(photoPath(kind, id));
+  let ct: Uint8Array | null;
+  try {
+    ct = await d.remote.read(photoPath(kind, id));
+  } catch (e) {
+    // Файл есть, но Диск его не отдаёт (сбой Яндекса) — как будто фото пока нет, попробуем позже
+    if (e instanceof UnavailableError) return null;
+    throw e;
+  }
   if (!ct) return null;
   try {
     return await d.local.putDownloaded(id, kind, ct);

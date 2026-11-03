@@ -52,7 +52,9 @@ function SyncSheet() {
           <div className="grow">
             <div className="t">{S.title}</div>
             <div className="s">{statusLine(state, at, photosLeft)}</div>
-            {detail && state !== 'ok' && state !== 'syncing' && <div className="s sync-detail">{S.detail(detail)}</div>}
+            {detail && state !== 'syncing' && (
+              <div className="s sync-detail">{state === 'ok' ? detail : S.detail(detail)}</div>
+            )}
           </div>
         </div>
         <div className="onb-list">

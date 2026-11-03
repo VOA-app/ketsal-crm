@@ -3,6 +3,8 @@
 
 export interface RemoteMeta {
   etag?: string;
+  /** SHA-256 содержимого (hex), если хранилище его сообщает: по нему проверяем запись без скачивания */
+  sha256?: string;
   size: number;
   modified: string;
 }
@@ -38,7 +40,7 @@ export class OfflineError extends Error {
   }
 }
 
-const hostOf = (url: string) => {
+export const hostOf = (url: string) => {
   try {
     return new URL(url).host;
   } catch {
@@ -57,6 +59,20 @@ export function offline(url: string, e: unknown): OfflineError {
     .replace(/https?:\/\/\S+/g, '…')
     .slice(0, 160);
   return new OfflineError(hostOf(url), cause);
+}
+
+/**
+ * Файл на Диске есть, но не отдаётся: сервер скачивания отвечает ошибкой (500 и т. п.).
+ * Октябрь–ноябрь 2026: после аварии в дата-центрах Яндекса часть файлов не скачивается подолгу.
+ */
+export class UnavailableError extends Error {
+  constructor(
+    readonly host: string,
+    readonly cause: string = '',
+  ) {
+    super(`unavailable ${host}`);
+    this.name = 'UnavailableError';
+  }
 }
 
 /** Сервер ответил ошибкой. */

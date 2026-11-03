@@ -1,6 +1,7 @@
 // Состояние синхронизации для экранов и её запуск (SPEC §7.2): при входе, при возврате в приложение,
 // через 3 секунды после изменения, по кнопке и при появлении сети. Одновременно идёт один цикл.
 import { create } from 'zustand';
+import { ru } from '../i18n/ru';
 import { startLogin } from '../auth/yandex-oauth';
 import { getVaultHeader } from '../db/repo';
 import { draftPhotoIds } from '../media/cache';
@@ -66,7 +67,7 @@ export async function syncNow(): Promise<void> {
   useSync.setState({ state: 'syncing' });
   try {
     const r = await runSync(header);
-    useSync.setState({ state: 'ok', at: await lastSyncAt(), detail: '' });
+    useSync.setState({ state: 'ok', at: await lastSyncAt(), detail: r.recovered ? ru.sync.recovered : '' });
     if (r.changed) onChanged();
     void syncPhotos();
   } catch (e) {

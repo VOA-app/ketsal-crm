@@ -7,7 +7,7 @@ import type { VaultHeader } from '../crypto/vault';
 import { deviceKey, local } from '../db/repo';
 import { todayISO } from '../domain/dates';
 import { photoFiles, type PhotoKind } from '../domain/photos';
-import { AuthError, OfflineError, RemoteError, type StorageAdapter } from './adapter';
+import { AuthError, OfflineError, RemoteError, UnavailableError, type StorageAdapter } from './adapter';
 import { fetchRemoteHeader, OtherVaultError, RemoteCorruptError, RollbackError, sync, type SyncResult } from './engine';
 import { MockAdapter } from './mockAdapter';
 import {
@@ -64,7 +64,7 @@ export async function isConnected(): Promise<boolean> {
   return !!devRemote || (await hasToken());
 }
 
-export type SyncFailure = 'offline' | 'auth' | 'rollback' | 'otherVault' | 'corrupt' | 'error';
+export type SyncFailure = 'offline' | 'auth' | 'rollback' | 'otherVault' | 'corrupt' | 'unavailable' | 'error';
 
 export function failureOf(e: unknown): SyncFailure {
   if (e instanceof OfflineError) return 'offline';
@@ -72,12 +72,13 @@ export function failureOf(e: unknown): SyncFailure {
   if (e instanceof RollbackError) return 'rollback';
   if (e instanceof OtherVaultError) return 'otherVault';
   if (e instanceof RemoteCorruptError) return 'corrupt';
+  if (e instanceof UnavailableError) return 'unavailable';
   return 'error';
 }
 
 /** Подробность для окна синхронизации: какой адрес не ответил или что ответил сервер. Без данных и токенов. */
 export function failureDetail(e: unknown): string {
-  if (e instanceof OfflineError) return [e.host, e.cause].filter(Boolean).join(' · ');
+  if (e instanceof OfflineError || e instanceof UnavailableError) return [e.host, e.cause].filter(Boolean).join(' · ');
   if (e instanceof RemoteError) return `HTTP ${e.status}`;
   if (e instanceof RemoteCorruptError) return e.path;
   return e instanceof Error ? e.name : '';

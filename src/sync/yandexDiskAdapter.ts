@@ -1,6 +1,14 @@
 // Яндекс Диск через REST API (SPEC §6.3). Доступ — только к папке приложения (`app:/`).
 // По итогам этапа 0: CORS есть везде, скачивание по ссылке — строго без Referer, иначе 403.
-import { AuthError, offline, OfflineError, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
+import {
+  AuthError,
+  hostOf,
+  offline,
+  RemoteError,
+  UnavailableError,
+  type RemoteMeta,
+  type StorageAdapter,
+} from './adapter';
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 
@@ -29,11 +37,11 @@ export class YandexDiskAdapter implements StorageAdapter {
   private q = (path: string) => `path=${encodeURIComponent(`app:/${path}`)}`;
 
   async getMeta(path: string): Promise<RemoteMeta | null> {
-    const r = await this.call(`/resources?${this.q(path)}&fields=size,modified,md5`);
+    const r = await this.call(`/resources?${this.q(path)}&fields=size,modified,md5,sha256`);
     if (r.status === 404) return null;
     if (!r.ok) throw new RemoteError(r.status);
-    const j = (await r.json()) as { size?: number; modified: string; md5?: string };
-    return { size: j.size ?? 0, modified: j.modified, etag: j.md5 };
+    const j = (await r.json()) as { size?: number; modified: string; md5?: string; sha256?: string };
+    return { size: j.size ?? 0, modified: j.modified, etag: j.md5, sha256: j.sha256 };
   }
 
   async read(path: string): Promise<Uint8Array | null> {
@@ -42,35 +50,28 @@ export class YandexDiskAdapter implements StorageAdapter {
     if (!r.ok) throw new RemoteError(r.status);
     const { href } = (await r.json()) as { href: string };
     const g = await this.download(href);
+    if (g.status >= 500) throw new UnavailableError(hostOf(href), `HTTP ${g.status}`);
     if (!g.ok) throw new RemoteError(g.status);
     return new Uint8Array(await g.arrayBuffer());
   }
 
   /**
-   * Скачать по ссылке Диска. Сервер скачивания на любую ошибку отвечает без CORS, и браузер видит
-   * только «Load failed». Ноябрь 2026: ссылки новой версии (tknv=v3) перестали открываться с iPhone,
-   * а сервер разрешает заголовок Authorization — поэтому сначала с токеном, затем по-старому, без него.
-   * Не вышло оба раза — проверяем без CORS, ответил ли сервер, и пишем это в подробности.
+   * Скачать по ссылке Диска. На любую ошибку сервер скачивания отвечает без CORS, и браузер видит
+   * только «Load failed». Тогда проверяем без CORS, ответил ли сервер: ответил — файл есть, но
+   * не отдаётся (UnavailableError, сбой на стороне Яндекса); не ответил — нет связи.
    */
   private async download(href: string): Promise<Response> {
-    const token = await this.token();
-    let last: unknown;
-    for (const headers of [{ Authorization: `OAuth ${token}` }, undefined]) {
-      try {
-        return await fetch(href, { referrerPolicy: 'no-referrer', headers });
-      } catch (e) {
-        last = e;
-      }
-    }
-    let answered = false;
     try {
-      await fetch(href, { mode: 'no-cors', referrerPolicy: 'no-referrer' });
-      answered = true;
-    } catch {
-      // сервер не ответил
+      return await fetch(href, { referrerPolicy: 'no-referrer' });
+    } catch (e) {
+      const err = offline(href, e);
+      try {
+        await fetch(href, { mode: 'no-cors', referrerPolicy: 'no-referrer' });
+      } catch {
+        throw err;
+      }
+      throw new UnavailableError(err.host, err.cause);
     }
-    const err = offline(href, last);
-    throw new OfflineError(err.host, `${err.cause} · ${answered ? 'сервер ответил отказом' : 'сервер не ответил'}`);
   }
 
   private async mkdir(dir: string) {
