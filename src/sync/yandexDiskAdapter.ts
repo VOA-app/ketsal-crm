@@ -1,6 +1,6 @@
 // Яндекс Диск через REST API (SPEC §6.3). Доступ — только к папке приложения (`app:/`).
 // По итогам этапа 0: CORS есть везде, скачивание по ссылке — строго без Referer, иначе 403.
-import { AuthError, offline, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
+import { AuthError, offline, OfflineError, RemoteError, type RemoteMeta, type StorageAdapter } from './adapter';
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 
@@ -41,14 +41,36 @@ export class YandexDiskAdapter implements StorageAdapter {
     if (r.status === 404) return null;
     if (!r.ok) throw new RemoteError(r.status);
     const { href } = (await r.json()) as { href: string };
-    let g: Response;
-    try {
-      g = await fetch(href, { referrerPolicy: 'no-referrer' });
-    } catch (e) {
-      throw offline(href, e);
-    }
+    const g = await this.download(href);
     if (!g.ok) throw new RemoteError(g.status);
     return new Uint8Array(await g.arrayBuffer());
+  }
+
+  /**
+   * Скачать по ссылке Диска. Сервер скачивания на любую ошибку отвечает без CORS, и браузер видит
+   * только «Load failed». Ноябрь 2026: ссылки новой версии (tknv=v3) перестали открываться с iPhone,
+   * а сервер разрешает заголовок Authorization — поэтому сначала с токеном, затем по-старому, без него.
+   * Не вышло оба раза — проверяем без CORS, ответил ли сервер, и пишем это в подробности.
+   */
+  private async download(href: string): Promise<Response> {
+    const token = await this.token();
+    let last: unknown;
+    for (const headers of [{ Authorization: `OAuth ${token}` }, undefined]) {
+      try {
+        return await fetch(href, { referrerPolicy: 'no-referrer', headers });
+      } catch (e) {
+        last = e;
+      }
+    }
+    let answered = false;
+    try {
+      await fetch(href, { mode: 'no-cors', referrerPolicy: 'no-referrer' });
+      answered = true;
+    } catch {
+      // сервер не ответил
+    }
+    const err = offline(href, last);
+    throw new OfflineError(err.host, `${err.cause} · ${answered ? 'сервер ответил отказом' : 'сервер не ответил'}`);
   }
 
   private async mkdir(dir: string) {
