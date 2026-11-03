@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PhotoKind } from '../../domain/photos';
 import type { PhotoRef } from '../../domain/types';
-import { cachedUrl, photoUrl } from '../../media/cache';
+import { BROKEN_PHOTO, cachedUrl, photoUrl } from '../../media/cache';
 import { ru } from '../../i18n/ru';
 import { useUi, type ViewerItem } from '../ui';
 import { Icon } from './Icon';
@@ -36,8 +36,15 @@ export function PhotoImg({
 }) {
   const thumb = usePhotoUrl(photo.thumbId, 'thumb');
   const original = usePhotoUrl(full ? photo.blobId : undefined, 'photo');
-  const url = (full && original) || thumb;
-  return url ? (
+  const url = (full && original && original !== BROKEN_PHOTO ? original : '') || thumb;
+  if ((full ? original : thumb) === BROKEN_PHOTO && (!url || url === BROKEN_PHOTO)) {
+    return (
+      <span className={`ph-blank ph-broken ${className ?? ''}`} role="img" aria-label={ru.photo.broken}>
+        <Icon name="close" />
+      </span>
+    );
+  }
+  return url && url !== BROKEN_PHOTO ? (
     <img src={url} alt={alt} className={className} loading="lazy" draggable={false} />
   ) : (
     <span className={`ph-blank ${className ?? ''}`} />

@@ -442,3 +442,37 @@
   color: var(--accent-text);
   flex: none;
 }
+
+/* Замер скорости (демо-сборка) */
+.bench-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.bench-table th,
+.bench-table td {
+  text-align: left;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line-c);
+  vertical-align: top;
+}
+.bench-table td:last-child,
+.bench-table th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.bench-table small {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+/* Фото не расшифровалось — видно, что оно испорчено, а не просто ещё не скачано */
+.ph-broken {
+  display: grid;
+  place-items: center;
+  color: var(--danger-text);
+}
+.ph-broken .i {
+  width: 18px;
+  height: 18px;
+}

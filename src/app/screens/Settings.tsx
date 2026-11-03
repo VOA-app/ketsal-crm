@@ -287,6 +287,10 @@ export function Settings() {
           <>
             <div className="section-title">{S.dev}</div>
             <div className="menu">
+              <button type="button" className="menu-item" onClick={() => navigate('/more/bench')}>
+                <Icon name="chart" />
+                <span className="t">{S.bench}</span>
+              </button>
               <button type="button" className="menu-item" onClick={demoReset}>
                 <Icon name="refresh" />
                 <span className="t">{S.demoReset}</span>

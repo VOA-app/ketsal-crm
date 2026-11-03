@@ -21,7 +21,8 @@ import { Refs } from './screens/Refs';
 import { Reports } from './screens/Reports';
 import { Settings } from './screens/Settings';
 import { Backup } from './screens/Backup';
-import { useData } from './store';
+import { Bench } from './screens/Bench';
+import { DEMO_ENABLED, useData } from './store';
 import { ui, useUi } from './ui';
 import { startUpdates, useUpdate } from './update';
 
@@ -166,6 +167,7 @@ function Shell() {
           <Route path="/more/certificates" element={<Certificates />} />
           <Route path="/more/settings" element={<Settings />} />
           <Route path="/more/backup" element={<Backup />} />
+          {DEMO_ENABLED && <Route path="/more/bench" element={<Bench />} />}
           <Route path="*" element={<Navigate to="/clients" replace />} />
         </Routes>
       </div>

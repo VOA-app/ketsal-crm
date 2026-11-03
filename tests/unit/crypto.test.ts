@@ -155,3 +155,20 @@ describe('ключ восстановления: кодирование', () => 
     expect(passwordStrength('Длинная фраза 2026!')).toBe(5);
   });
 });
+
+describe('ревью криптографии (этап 7)', () => {
+  it('100 000 шифрований одним ключом — ни одного повтора IV', async () => {
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    const seen = new Set<string>();
+    const plain = new Uint8Array([1]);
+    const N = 100_000;
+    for (let i = 0; i < N; i += 500) {
+      const batch = await Promise.all(
+        Array.from({ length: 500 }, () => seal(key, plain, aadFor('V', 'shard', '00', 1))),
+      );
+      // Конверт: "KTS1" (4) + версия (1) + IV (12)
+      for (const env of batch) seen.add(Array.from(env.subarray(5, 17)).join(','));
+    }
+    expect(seen.size).toBe(N);
+  }, 120_000);
+});

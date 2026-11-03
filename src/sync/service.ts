@@ -15,6 +15,7 @@ import {
   downloadMissing,
   fetchPhoto,
   localPhotoGc,
+  PhotoCorruptError,
   prefetchThumbs,
   refsOf,
   remotePhotoGc,
@@ -139,7 +140,9 @@ export async function loadRemotePhoto(id: string, kind: PhotoKind): Promise<Blob
   if (!(await isConnected())) return null;
   try {
     return await fetchPhoto({ local: local(), remote: remote() }, id, kind);
-  } catch {
+  } catch (e) {
+    // Подменённый или повреждённый файл — пусть экран это покажет; сбой связи — просто «пока нет»
+    if (e instanceof PhotoCorruptError) throw e;
     return null;
   }
 }

@@ -29,7 +29,10 @@ export function cachedUrl(id: string): string | null {
   return u ?? null;
 }
 
-/** Адрес фото для <img>; '' — фото пока нет (не скачано, нет сети). */
+/** Фото не расшифровалось (повреждено или подменено) — экран показывает это, а не пустое место. */
+export const BROKEN_PHOTO = 'broken:';
+
+/** Адрес фото для <img>; '' — фото пока нет (не скачано, нет сети); BROKEN_PHOTO — не открывается. */
 export function photoUrl(id: string, kind: PhotoKind): Promise<string> {
   const hit = cachedUrl(id);
   if (hit) return Promise.resolve(hit);
@@ -42,14 +45,17 @@ export function photoUrl(id: string, kind: PhotoKind): Promise<string> {
         url = demoPhotoUri(id);
       } else {
         let blob: Blob | null = null;
+        let broken = false;
         try {
           blob = (await getBlob(id)) ?? (await loadRemotePhoto(id, kind));
-        } catch {
-          // Файл на устройстве не расшифровался — показываем как отсутствующий
+        } catch (e) {
+          // Не расшифровалось на устройстве или пришло подменённым с Диска — не молчим
+          console.error(e instanceof Error ? e.name : 'photo error');
+          broken = true;
         }
-        url = blob ? URL.createObjectURL(blob) : '';
+        url = blob ? URL.createObjectURL(blob) : broken ? BROKEN_PHOTO : '';
       }
-      if (url) remember(id, url);
+      if (url && url !== BROKEN_PHOTO) remember(id, url);
       return url;
     })().finally(() => pending.delete(id));
     pending.set(id, p);
