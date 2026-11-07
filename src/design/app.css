@@ -424,6 +424,12 @@
 .sync-space .hint {
   margin-top: 2px;
 }
+.sync-space-login {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
 
 /* «Доступна новая версия» — над нижней панелью вкладок */
 .update-bar {

@@ -7,7 +7,7 @@ import { LocalStore } from '../../src/db/localStore';
 import { photoRefs } from '../../src/domain/photos';
 import { formatBytes, LOW_SPACE_BYTES, spaceLevel } from '../../src/domain/space';
 import type { Entity, PhotoRef, Procedure } from '../../src/domain/types';
-import { NoSpaceError } from '../../src/sync/adapter';
+import { NoSpaceError, NoSpaceInfoAccessError } from '../../src/sync/adapter';
 import { sync } from '../../src/sync/engine';
 import { MockAdapter } from '../../src/sync/mockAdapter';
 import { photoPath, uploadPhotos, type PhotoDeps } from '../../src/sync/photos';
@@ -122,5 +122,16 @@ describe('Диск заполнен', () => {
     s.remote.capacity = 0;
     expect(await uploadPhotos(s.deps)).toBe(0);
     expect(s.remote.files.has(photoPath('photo', 'fB'))).toBe(true);
+  });
+});
+
+describe('нет права на сведения о Диске', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it('403 на объём Диска — отдельная ошибка: нужно войти заново, а не «сбой»', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 403 })),
+    );
+    await expect(new YandexDiskAdapter(async () => 't').space()).rejects.toBeInstanceOf(NoSpaceInfoAccessError);
   });
 });

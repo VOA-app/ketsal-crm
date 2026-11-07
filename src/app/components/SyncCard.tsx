@@ -50,10 +50,26 @@ export function spaceProblem(state: SyncState, photosNoSpace: boolean, space: Sp
   return lvl === 'ok' ? null : lvl;
 }
 
-function SpaceInfoBlock({ space, problem }: { space: SpaceInfo | null; problem: 'low' | 'full' | null }) {
-  if (!space && !problem) return null;
+function SpaceInfoBlock({
+  space,
+  problem,
+  noAccess,
+}: {
+  space: SpaceInfo | null;
+  problem: 'low' | 'full' | null;
+  noAccess: boolean;
+}) {
+  if (!space && !problem && !noAccess) return null;
   return (
     <div className="sync-space">
+      {noAccess && !space && (
+        <div className="sync-space-login">
+          <p className="hint mb-0">{S.spaceNoAccess}</p>
+          <button type="button" className="btn btn-sm btn-secondary" onClick={() => void connectYandex()}>
+            {S.spaceRelogin}
+          </button>
+        </div>
+      )}
       {space && (
         <div className="s">
           {S.space(formatBytes(space.used), formatBytes(space.total))}
@@ -67,7 +83,7 @@ function SpaceInfoBlock({ space, problem }: { space: SpaceInfo | null; problem: 
 }
 
 function SyncSheet() {
-  const { state, at, photosLeft, detail, photosNoSpace, space } = useSync();
+  const { state, at, photosLeft, detail, photosNoSpace, space, spaceNoAccess } = useSync();
   const problem = spaceProblem(state, photosNoSpace, space);
   useMinuteTick();
   return (
@@ -82,7 +98,7 @@ function SyncSheet() {
             {detail && state !== 'syncing' && (
               <div className="s sync-detail">{state === 'ok' ? detail : S.detail(detail)}</div>
             )}
-            {state !== 'off' && <SpaceInfoBlock space={space} problem={problem} />}
+            {state !== 'off' && <SpaceInfoBlock space={space} problem={problem} noAccess={spaceNoAccess} />}
           </div>
         </div>
         <div className="onb-list">

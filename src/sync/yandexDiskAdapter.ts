@@ -4,6 +4,7 @@ import {
   AuthError,
   hostOf,
   NoSpaceError,
+  NoSpaceInfoAccessError,
   offline,
   RemoteError,
   UnavailableError,
@@ -114,6 +115,7 @@ export class YandexDiskAdapter implements StorageAdapter {
 
   async space(): Promise<DiskSpace | null> {
     const r = await this.call('?fields=total_space,used_space,trash_size');
+    if (r.status === 403) throw new NoSpaceInfoAccessError();
     if (!r.ok) throw new RemoteError(r.status);
     const j = (await r.json()) as { total_space?: number; used_space?: number; trash_size?: number };
     if (!j.total_space) return null;

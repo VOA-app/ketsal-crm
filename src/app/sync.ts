@@ -31,6 +31,8 @@ interface SyncStore {
   photosNoSpace: boolean;
   /** Место на Диске по последней проверке; null — неизвестно */
   space: SpaceInfo | null;
+  /** Вход в Яндекс выдан без права на сведения о Диске: место не видно до повторного входа */
+  spaceNoAccess: boolean;
   refresh(): Promise<void>;
 }
 
@@ -41,6 +43,7 @@ export const useSync = create<SyncStore>((set) => ({
   detail: '',
   photosNoSpace: false,
   space: null,
+  spaceNoAccess: false,
   async refresh() {
     const connected = await isConnected();
     set({ state: connected ? 'ok' : 'off', at: connected ? await lastSyncAt() : '' });
@@ -155,7 +158,8 @@ async function checkSpace(force = false): Promise<void> {
   if (!force && Date.now() - spaceAt < SPACE_EVERY_MS) return;
   spaceAt = Date.now();
   const s = await diskSpace();
-  if (s) useSync.setState({ space: s });
+  if (s === 'noAccess') useSync.setState({ spaceNoAccess: true });
+  else if (s) useSync.setState({ space: s, spaceNoAccess: false });
 }
 
 export const connectYandex = () => startLogin();

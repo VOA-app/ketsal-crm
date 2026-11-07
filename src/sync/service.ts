@@ -10,6 +10,7 @@ import { photoFiles, type PhotoKind } from '../domain/photos';
 import {
   AuthError,
   NoSpaceError,
+  NoSpaceInfoAccessError,
   OfflineError,
   RemoteError,
   UnavailableError,
@@ -147,13 +148,16 @@ export async function runPhotos(opts: {
   if (noSpace) throw noSpace;
 }
 
-/** Сколько места на Диске занято и всего (null — не подключён, нет связи или Диск не сообщает). */
-export async function diskSpace(): Promise<DiskSpace | null> {
+/**
+ * Сколько места на Диске занято и всего. null — не подключён, нет связи или Диск не сообщает;
+ * 'noAccess' — у входа нет права на сведения о Диске, нужно войти в Яндекс заново.
+ */
+export async function diskSpace(): Promise<DiskSpace | 'noAccess' | null> {
   if (!(await isConnected())) return null;
   try {
     return await remote().space();
-  } catch {
-    return null;
+  } catch (e) {
+    return e instanceof NoSpaceInfoAccessError ? 'noAccess' : null;
   }
 }
 

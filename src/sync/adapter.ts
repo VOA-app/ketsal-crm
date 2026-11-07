@@ -28,6 +28,17 @@ export interface StorageAdapter {
   space(): Promise<DiskSpace | null>;
 }
 
+/**
+ * Хранилище не даёт сведений о месте: у приложения нет такого права (Яндекс: cloud_api:disk.info,
+ * добавлено 08.11.2026 — у входов, выданных раньше, его нет до повторного входа).
+ */
+export class NoSpaceInfoAccessError extends Error {
+  constructor() {
+    super('no space info access');
+    this.name = 'NoSpaceInfoAccessError';
+  }
+}
+
 /** В хранилище закончилось место (Яндекс Диск отвечает 507). */
 export class NoSpaceError extends Error {
   constructor() {
