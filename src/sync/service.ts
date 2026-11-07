@@ -17,7 +17,15 @@ import {
   type DiskSpace,
   type StorageAdapter,
 } from './adapter';
-import { fetchRemoteHeader, OtherVaultError, RemoteCorruptError, RollbackError, sync, type SyncResult } from './engine';
+import {
+  fetchRemoteHeader,
+  OtherVaultError,
+  RemoteCorruptError,
+  RemoteMissingError,
+  RollbackError,
+  sync,
+  type SyncResult,
+} from './engine';
 import { MockAdapter } from './mockAdapter';
 import {
   deleteRemotePhotos,
@@ -75,7 +83,7 @@ export async function isConnected(): Promise<boolean> {
 }
 
 export type SyncFailure =
-  'offline' | 'auth' | 'rollback' | 'otherVault' | 'corrupt' | 'unavailable' | 'noSpace' | 'error';
+  'offline' | 'auth' | 'rollback' | 'otherVault' | 'corrupt' | 'unavailable' | 'noSpace' | 'remoteMissing' | 'error';
 
 export function failureOf(e: unknown): SyncFailure {
   if (e instanceof OfflineError) return 'offline';
@@ -85,6 +93,7 @@ export function failureOf(e: unknown): SyncFailure {
   if (e instanceof RemoteCorruptError) return 'corrupt';
   if (e instanceof UnavailableError) return 'unavailable';
   if (e instanceof NoSpaceError) return 'noSpace';
+  if (e instanceof RemoteMissingError) return 'remoteMissing';
   return 'error';
 }
 
@@ -99,14 +108,25 @@ export function failureDetail(e: unknown): string {
 /** vault.json с Диска (для второго устройства) или null, если хранилища там ещё нет. */
 export const remoteHeader = (): Promise<VaultHeader | null> => fetchRemoteHeader(remote());
 
-export const runSync = (header: VaultHeader): Promise<SyncResult> =>
+export const runSync = (header: VaultHeader, opts: { allowNewRemote?: boolean } = {}): Promise<SyncResult> =>
   sync({
     local: local(),
     remote: remote(),
     session: requireSession,
     header,
     saveHeader: (h) => local().setMeta('vault', h),
+    // Облако в памяти (разработка и демо) пустеет при каждой перезагрузке — это не «другой аккаунт»
+    allowNewRemote: opts.allowNewRemote || !!devRemote,
   });
+
+/**
+ * Мастер решил хранить данные на Диске, где хранилища ещё нет (переезд на другой аккаунт Яндекса):
+ * все фото с устройства — снова в очередь, записи уходят целиком.
+ */
+export async function moveToThisDisk(header: VaultHeader): Promise<SyncResult> {
+  await local().requeueAllPhotos();
+  return runSync(header, { allowNewRemote: true });
+}
 
 export async function lastSyncAt(): Promise<string> {
   return (await local().getSyncMeta()).lastSyncAt;

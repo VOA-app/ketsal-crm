@@ -7,6 +7,7 @@ import { daysBetween } from '../../domain/dates';
 import { recentlyReminded, remindedAt, viewItems, type ViewItem } from '../../domain/reminders';
 import { fullName, nextCardNo, searchClients } from '../../domain/search';
 import { formatBytes, freeBytes } from '../../domain/space';
+import { syncAttention } from '../../domain/syncHealth';
 import { lc } from '../../domain/text';
 import type { Client, Entity } from '../../domain/types';
 import { fmtDate, fmtDateShort, relDay } from '../../i18n/format';
@@ -20,7 +21,7 @@ import { openClientForm } from '../forms/ClientForm';
 import { openMessage } from '../forms/MessageSheet';
 import { zoneName } from '../names';
 import { useData } from '../store';
-import { useSync } from '../sync';
+import { connectYandex, useSync } from '../sync';
 import { useView } from '../view';
 
 const R = ru.clients;
@@ -237,6 +238,46 @@ function ClientList() {
   );
 }
 
+/** Синхронизация требует внимания: нет доступа к Диску, вошли не в тот аккаунт, долго нет связи. */
+let attnBannerHidden = false;
+
+function SyncAttentionBanner() {
+  const [hidden, setHidden] = useState(attnBannerHidden);
+  const { state, at } = useSync();
+  // Время открытия экрана: для «синхронизации нет N дней» точнее не нужно
+  const [now] = useState(() => Date.now());
+  const a = syncAttention(state, at, now);
+  if (hidden || !a) return null;
+  const S = ru.sync;
+  const text = a.kind === 'auth' ? S.attnAuth : a.kind === 'remoteMissing' ? S.attnMissing : S.attnStale(a.days);
+  return (
+    <div className="banner">
+      <Icon name="cloud" />
+      <span>{text}</span>
+      {a.kind === 'auth' ? (
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => void connectYandex()}>
+          {S.attnAuthDo}
+        </button>
+      ) : (
+        <button type="button" className="btn btn-sm btn-primary" onClick={openSyncSheet}>
+          {S.bannerDo}
+        </button>
+      )}
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={S.bannerHide}
+        onClick={() => {
+          attnBannerHidden = true;
+          setHidden(true);
+        }}
+      >
+        <Icon name="close" className="i-sm" />
+      </button>
+    </div>
+  );
+}
+
 /** Место на Яндекс Диске заканчивается или закончилось: скрывается до следующего запуска. */
 let spaceBannerHidden = false;
 
@@ -352,6 +393,7 @@ export function Clients() {
         </ScrollChips>
       </header>
       <div className="scroller">
+        {!clientSearch.trim() && <SyncAttentionBanner />}
         {!clientSearch.trim() && <SpaceBanner />}
         {!clientSearch.trim() && <BackupBanner />}
         <ClientList />

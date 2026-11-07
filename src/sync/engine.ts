@@ -47,6 +47,17 @@ export class OtherVaultError extends Error {
   }
 }
 
+/**
+ * На Диске нет хранилища, хотя это устройство уже синхронизировалось: скорее всего, вошли в другой
+ * аккаунт Яндекса (или папку приложения удалили). Молча начинать новую копию нельзя — данные разъедутся.
+ */
+export class RemoteMissingError extends Error {
+  constructor() {
+    super('remote missing');
+    this.name = 'RemoteMissingError';
+  }
+}
+
 /** Файл на Диске повреждён или подменён: расшифровка не прошла. */
 export class RemoteCorruptError extends Error {
   constructor(readonly path: string) {
@@ -62,6 +73,8 @@ export interface SyncDeps {
   header: VaultHeader;
   /** Сохранить на устройстве более новый vault.json с Диска (пароль сменили на другом устройстве) */
   saveHeader?: (h: VaultHeader) => Promise<void>;
+  /** Мастер подтвердил: хранилища на этом Диске нет, начать хранить данные здесь */
+  allowNewRemote?: boolean;
 }
 
 export interface SyncResult {
@@ -151,6 +164,10 @@ const writeVault = (d: SyncDeps, h: VaultHeader) =>
  */
 async function ensureVault(d: SyncDeps): Promise<boolean> {
   const bytes = await tryRead(() => d.remote.read(VAULT));
+  // Хранилища на Диске нет совсем, а устройство уже синхронизировалось — не начинаем молча
+  if (!bytes && !d.allowNewRemote && (await d.local.getSyncMeta()).remoteCatalogRev > 0) {
+    if (!(await d.remote.getMeta(CATALOG))) throw new RemoteMissingError();
+  }
   // Нет файла или он не скачивается (сбой Яндекса): кладём свой — тот же заголовок этого хранилища
   if (!bytes || bytes === LOST) {
     await writeVault(d, d.header);

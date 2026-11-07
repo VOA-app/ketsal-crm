@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { formatBytes, freeBytes, spaceLevel, type SpaceInfo } from '../../domain/space';
 import { ru } from '../../i18n/ru';
-import { connectYandex, syncNow, useSync, type SyncState } from '../sync';
+import { chooseOtherAccount, connectYandex, keepOnThisDisk, syncNow, useSync, type SyncState } from '../sync';
 import { ui } from '../ui';
 import { Icon } from './Icon';
 import { SheetBody, SheetFoot, SheetHead } from './Sheet';
@@ -33,7 +33,13 @@ export function syncText(state: SyncState, at: string): string {
   }
 }
 
-const isAlert = (s: SyncState) => s === 'rollback' || s === 'otherVault' || s === 'corrupt';
+const isAlert = (s: SyncState) => s === 'rollback' || s === 'otherVault' || s === 'corrupt' || s === 'remoteMissing';
+
+/** Хранить данные на Диске нового аккаунта — только после подтверждения. */
+export async function confirmKeepHere() {
+  const ok = await ui().confirm({ title: S.keepHereTitle, text: S.keepHereText, ok: S.keepHereOk, danger: false });
+  if (ok) void keepOnThisDisk();
+}
 
 /** Строка состояния и, если есть, сколько фото ждут загрузки (или не загружаются из-за места). */
 function statusLine(state: SyncState, at: string, photosLeft: number, photosNoSpace = false) {
@@ -121,7 +127,16 @@ function SyncSheet() {
         </div>
       </SheetBody>
       <SheetFoot>
-        {state === 'off' || state === 'auth' ? (
+        {state === 'remoteMissing' ? (
+          <>
+            <button type="button" className="btn btn-primary" onClick={() => void chooseOtherAccount()}>
+              {S.otherAccount}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => void confirmKeepHere()}>
+              {S.keepHere}
+            </button>
+          </>
+        ) : state === 'off' || state === 'auth' ? (
           <button type="button" className="btn btn-primary" onClick={() => void connectYandex()}>
             {state === 'off' ? S.connect : S.relogin}
           </button>

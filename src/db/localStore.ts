@@ -545,6 +545,17 @@ export class LocalStore {
     });
   }
 
+  /** Хранилище переезжает на другой Диск: все фото с устройства снова в очередь на загрузку. */
+  async requeueAllPhotos(): Promise<number> {
+    const at = Date.now();
+    return this.db.transaction('rw', this.db.blobs, this.db.photoUp, async () => {
+      const ids = (await this.db.blobs.toCollection().primaryKeys()) as string[];
+      await this.db.blobs.toCollection().modify({ synced: false });
+      await this.db.photoUp.bulkPut(ids.map((id) => ({ id, at })));
+      return ids.length;
+    });
+  }
+
   /** Очередь загрузки: id в порядке появления. */
   async uploadQueue(): Promise<string[]> {
     return (await this.db.photoUp.toArray()).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)).map((r) => r.id);

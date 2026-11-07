@@ -12,6 +12,7 @@ import {
   failureOf,
   isConnected,
   lastSyncAt,
+  moveToThisDisk,
   runPhotos,
   runSync,
   type SyncFailure,
@@ -60,8 +61,11 @@ export function setOnSyncChanged(fn: () => void) {
   onChanged = fn;
 }
 
-/** Запустить синхронизацию сейчас (если уже идёт — повторить по окончании). */
-export async function syncNow(): Promise<void> {
+/**
+ * Запустить синхронизацию сейчас (если уже идёт — повторить по окончании).
+ * moveHere — мастер подтвердил, что данные теперь хранятся на этом Диске (другой аккаунт Яндекса).
+ */
+export async function syncNow(opts: { moveHere?: boolean } = {}): Promise<void> {
   if (running) {
     again = true;
     return;
@@ -77,15 +81,16 @@ export async function syncNow(): Promise<void> {
   stopped = false;
   useSync.setState({ state: 'syncing' });
   try {
-    const r = await runSync(header);
+    const r = opts.moveHere ? await moveToThisDisk(header) : await runSync(header);
     useSync.setState({ state: 'ok', at: await lastSyncAt(), detail: r.recovered ? ru.sync.recovered : '' });
     if (r.changed) onChanged();
     void syncPhotos();
     void checkSpace();
   } catch (e) {
     const f = failureOf(e);
-    if (f !== 'offline' && f !== 'auth' && f !== 'noSpace') console.error(e instanceof Error ? e.name : 'sync error');
-    useSync.setState({ state: f, detail: f === 'noSpace' ? '' : failureDetail(e) });
+    const expected = f === 'offline' || f === 'auth' || f === 'noSpace' || f === 'remoteMissing';
+    if (!expected) console.error(e instanceof Error ? e.name : 'sync error');
+    useSync.setState({ state: f, detail: expected && f !== 'offline' ? '' : failureDetail(e) });
     if (f === 'noSpace') void checkSpace(true);
   } finally {
     running = false;
@@ -115,8 +120,11 @@ let photosRunning = false;
 let photoTimer: ReturnType<typeof setTimeout> | undefined;
 let backoff = 0;
 
+/** Пока Диск под вопросом (чужое или пропавшее хранилище, откат), фото туда не отправляем. */
+const DISK_IN_DOUBT: SyncState[] = ['remoteMissing', 'otherVault', 'rollback', 'corrupt'];
+
 async function syncPhotos(): Promise<void> {
-  if (photosRunning || stopped) return;
+  if (photosRunning || stopped || DISK_IN_DOUBT.includes(useSync.getState().state)) return;
   photosRunning = true;
   clearTimeout(photoTimer);
   try {
@@ -163,3 +171,7 @@ async function checkSpace(force = false): Promise<void> {
 }
 
 export const connectYandex = () => startLogin();
+/** Войти в Яндекс, выбрав аккаунт заново (вошли не в тот). */
+export const chooseOtherAccount = () => startLogin({ chooseAccount: true });
+/** Хранить данные на Диске этого аккаунта: отправить всё заново. */
+export const keepOnThisDisk = () => syncNow({ moveHere: true });

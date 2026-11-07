@@ -33,7 +33,7 @@ export const redirectUri = (): string => location.origin + location.pathname;
  * и localStorage: в режиме «Домой» на iPhone возврат иногда приходит в новый контекст страницы.
  * Это не данные клиентов, и после возврата они сразу стираются.
  */
-export async function startLogin(): Promise<void> {
+export async function startLogin(opts: { chooseAccount?: boolean } = {}): Promise<void> {
   const { verifier, challenge } = await pkcePair();
   const p: Pending = { state: randomState(), verifier, hash: location.hash };
   const raw = JSON.stringify(p);
@@ -46,7 +46,8 @@ export async function startLogin(): Promise<void> {
     state: p.state,
     code_challenge: challenge,
     code_challenge_method: 'S256',
-    force_confirm: 'no',
+    // Выбрать другой аккаунт: Яндекс покажет, под кем входим, и даст сменить аккаунт
+    force_confirm: opts.chooseAccount ? 'yes' : 'no',
   });
   location.assign(`https://oauth.yandex.ru/authorize?${params}`);
 }
