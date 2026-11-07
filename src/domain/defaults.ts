@@ -2,6 +2,10 @@
 // анестетики и курсы стартуют пустыми: мастер заполняет их в «Справочниках».
 import type { Data, Entity, Lists, Settings, Zone } from './types';
 
+/** Длинная сторона фото, точки: обычная и в режиме «Экономить место на Диске». */
+export const PHOTO_SIDE = 2560;
+export const PHOTO_SIDE_SAVE = 1600;
+
 export function defaultSettings(): Settings {
   return {
     corrFrom: 28,
@@ -25,7 +29,7 @@ export function defaultSettings(): Settings {
     },
     stripExif: true,
     keepTakenAt: false,
-    photoMaxSide: 2560,
+    photoMaxSide: PHOTO_SIDE,
   };
 }
 

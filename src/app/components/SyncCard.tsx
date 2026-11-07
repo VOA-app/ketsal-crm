@@ -1,5 +1,6 @@
 // Состояние синхронизации (SPEC §7.2): «Синхронизировано · 2 мин назад», «Нет сети…», «Ошибка…».
 import { useEffect, useState } from 'react';
+import { formatBytes, freeBytes, spaceLevel, type SpaceInfo } from '../../domain/space';
 import { ru } from '../../i18n/ru';
 import { connectYandex, syncNow, useSync, type SyncState } from '../sync';
 import { ui } from '../ui';
@@ -34,14 +35,40 @@ export function syncText(state: SyncState, at: string): string {
 
 const isAlert = (s: SyncState) => s === 'rollback' || s === 'otherVault' || s === 'corrupt';
 
-/** Строка состояния и, если есть, сколько фото ждут загрузки. */
-function statusLine(state: SyncState, at: string, photosLeft: number) {
+/** Строка состояния и, если есть, сколько фото ждут загрузки (или не загружаются из-за места). */
+function statusLine(state: SyncState, at: string, photosLeft: number, photosNoSpace = false) {
   const t = syncText(state, at);
-  return photosLeft > 0 && state !== 'off' ? `${t} · ${S.photosLeft(photosLeft)}` : t;
+  if (photosLeft <= 0 || state === 'off' || state === 'noSpace') return t;
+  return `${t} · ${photosNoSpace ? S.photosNoSpace(photosLeft) : S.photosLeft(photosLeft)}`;
+}
+
+/** Нужно внимание мастера из-за места на Диске: закончилось или скоро закончится. */
+export function spaceProblem(state: SyncState, photosNoSpace: boolean, space: SpaceInfo | null) {
+  if (state === 'off') return null;
+  if (state === 'noSpace' || photosNoSpace) return 'full' as const;
+  const lvl = space ? spaceLevel(space) : 'ok';
+  return lvl === 'ok' ? null : lvl;
+}
+
+function SpaceInfoBlock({ space, problem }: { space: SpaceInfo | null; problem: 'low' | 'full' | null }) {
+  if (!space && !problem) return null;
+  return (
+    <div className="sync-space">
+      {space && (
+        <div className="s">
+          {S.space(formatBytes(space.used), formatBytes(space.total))}
+          {space.trash > 0 && ` · ${S.spaceTrash(formatBytes(space.trash))}`}
+        </div>
+      )}
+      {problem === 'low' && space && <div className="s">{S.spaceLow(formatBytes(freeBytes(space)))}</div>}
+      {problem && <p className="hint mb-0">{S.spaceHelp}</p>}
+    </div>
+  );
 }
 
 function SyncSheet() {
-  const { state, at, photosLeft, detail } = useSync();
+  const { state, at, photosLeft, detail, photosNoSpace, space } = useSync();
+  const problem = spaceProblem(state, photosNoSpace, space);
   useMinuteTick();
   return (
     <>
@@ -51,10 +78,11 @@ function SyncSheet() {
           <Icon name="cloud" />
           <div className="grow">
             <div className="t">{S.title}</div>
-            <div className="s">{statusLine(state, at, photosLeft)}</div>
+            <div className="s">{statusLine(state, at, photosLeft, photosNoSpace)}</div>
             {detail && state !== 'syncing' && (
               <div className="s sync-detail">{state === 'ok' ? detail : S.detail(detail)}</div>
             )}
+            {state !== 'off' && <SpaceInfoBlock space={space} problem={problem} />}
           </div>
         </div>
         <div className="onb-list">
@@ -100,14 +128,14 @@ export const openSyncSheet = () => ui().openSheet(() => <SyncSheet />, { auto: t
 
 /** Карточка в «Ещё». */
 export function SyncCard() {
-  const { state, at, photosLeft } = useSync();
+  const { state, at, photosLeft, photosNoSpace } = useSync();
   useMinuteTick();
   return (
     <div className={`sync-card ${isAlert(state) ? 'sync-card--alert' : ''}`}>
       <Icon name="cloud" />
       <div className="grow">
         <div className="t">{S.title}</div>
-        <div className="s">{statusLine(state, at, photosLeft)}</div>
+        <div className="s">{statusLine(state, at, photosLeft, photosNoSpace)}</div>
       </div>
       {state === 'off' ? (
         <button type="button" className="btn btn-sm btn-primary" onClick={() => void connectYandex()}>
@@ -129,6 +157,7 @@ export function SyncCard() {
 /** Кнопка-облачко в шапке «Клиентов»: состояние видно с главного экрана. */
 export function SyncButton() {
   const state = useSync((s) => s.state);
+  const noSpace = useSync((s) => spaceProblem(s.state, s.photosNoSpace, s.space) === 'full');
   return (
     <button
       type="button"
@@ -137,7 +166,7 @@ export function SyncButton() {
       onClick={openSyncSheet}
     >
       <Icon name="cloud" />
-      {(isAlert(state) || state === 'auth' || state === 'off') && <span className="sync-dot" />}
+      {(isAlert(state) || state === 'auth' || state === 'off' || noSpace) && <span className="sync-dot" />}
     </button>
   );
 }

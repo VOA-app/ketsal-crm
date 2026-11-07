@@ -9,13 +9,31 @@ export interface RemoteMeta {
   modified: string;
 }
 
+/** Место в хранилище целиком (не только папка приложения), байты. */
+export interface DiskSpace {
+  total: number;
+  used: number;
+  /** Корзина: занимает место, пока её не очистят */
+  trash: number;
+}
+
 export interface StorageAdapter {
   getMeta(path: string): Promise<RemoteMeta | null>;
   read(path: string): Promise<Uint8Array | null>;
-  /** Перезаписать файл целиком */
+  /** Перезаписать файл целиком. Нет места — NoSpaceError */
   write(path: string, data: Uint8Array): Promise<void>;
   remove(path: string): Promise<void>;
   list(dir: string): Promise<{ name: string; size: number; modified: string }[]>;
+  /** Сколько места занято и всего; null — хранилище не сообщает */
+  space(): Promise<DiskSpace | null>;
+}
+
+/** В хранилище закончилось место (Яндекс Диск отвечает 507). */
+export class NoSpaceError extends Error {
+  constructor() {
+    super('no space');
+    this.name = 'NoSpaceError';
+  }
 }
 
 /** Нужен повторный вход: токен не принят (401). */

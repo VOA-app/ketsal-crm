@@ -414,6 +414,17 @@
   word-break: break-word;
 }
 
+/* Место на Яндекс Диске в окне синхронизации */
+.sync-space {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sync-space .hint {
+  margin-top: 2px;
+}
+
 /* «Доступна новая версия» — над нижней панелью вкладок */
 .update-bar {
   position: fixed;

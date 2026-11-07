@@ -7,7 +7,15 @@ import type { VaultHeader } from '../crypto/vault';
 import { deviceKey, local } from '../db/repo';
 import { todayISO } from '../domain/dates';
 import { photoFiles, type PhotoKind } from '../domain/photos';
-import { AuthError, OfflineError, RemoteError, UnavailableError, type StorageAdapter } from './adapter';
+import {
+  AuthError,
+  NoSpaceError,
+  OfflineError,
+  RemoteError,
+  UnavailableError,
+  type DiskSpace,
+  type StorageAdapter,
+} from './adapter';
 import { fetchRemoteHeader, OtherVaultError, RemoteCorruptError, RollbackError, sync, type SyncResult } from './engine';
 import { MockAdapter } from './mockAdapter';
 import {
@@ -65,7 +73,8 @@ export async function isConnected(): Promise<boolean> {
   return !!devRemote || (await hasToken());
 }
 
-export type SyncFailure = 'offline' | 'auth' | 'rollback' | 'otherVault' | 'corrupt' | 'unavailable' | 'error';
+export type SyncFailure =
+  'offline' | 'auth' | 'rollback' | 'otherVault' | 'corrupt' | 'unavailable' | 'noSpace' | 'error';
 
 export function failureOf(e: unknown): SyncFailure {
   if (e instanceof OfflineError) return 'offline';
@@ -74,6 +83,7 @@ export function failureOf(e: unknown): SyncFailure {
   if (e instanceof OtherVaultError) return 'otherVault';
   if (e instanceof RemoteCorruptError) return 'corrupt';
   if (e instanceof UnavailableError) return 'unavailable';
+  if (e instanceof NoSpaceError) return 'noSpace';
   return 'error';
 }
 
@@ -118,7 +128,14 @@ export async function runPhotos(opts: {
 }): Promise<void> {
   const d = photoDeps();
   await deleteRemotePhotos(d);
-  await uploadPhotos(d, opts.onProgress);
+  // Нет места на Диске: фото подождут, а превью и уборка (она освобождает место) идут как обычно
+  let noSpace: NoSpaceError | null = null;
+  try {
+    await uploadPhotos(d, opts.onProgress);
+  } catch (e) {
+    if (!(e instanceof NoSpaceError)) throw e;
+    noSpace = e;
+  }
   if (opts.isStopped()) return;
   await prefetchThumbs(d, opts.isStopped);
   await localPhotoGc(d, opts.keep);
@@ -126,6 +143,17 @@ export async function runPhotos(opts: {
   if (Date.now() - last > GC_EVERY_MS && !opts.isStopped()) {
     await remotePhotoGc(d);
     await local().setMeta('photoGcAt', Date.now());
+  }
+  if (noSpace) throw noSpace;
+}
+
+/** Сколько места на Диске занято и всего (null — не подключён, нет связи или Диск не сообщает). */
+export async function diskSpace(): Promise<DiskSpace | null> {
+  if (!(await isConnected())) return null;
+  try {
+    return await remote().space();
+  } catch {
+    return null;
   }
 }
 

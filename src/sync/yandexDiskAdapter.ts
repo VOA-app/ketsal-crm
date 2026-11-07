@@ -3,12 +3,17 @@
 import {
   AuthError,
   hostOf,
+  NoSpaceError,
   offline,
   RemoteError,
   UnavailableError,
+  type DiskSpace,
   type RemoteMeta,
   type StorageAdapter,
 } from './adapter';
+
+/** Insufficient Storage: на Диске нет места под файл */
+const NO_SPACE = 507;
 
 const API = 'https://cloud-api.yandex.net/v1/disk';
 
@@ -90,6 +95,7 @@ export class YandexDiskAdapter implements StorageAdapter {
       await this.mkdir(dir);
       r = await this.call(`/resources/upload?${this.q(path)}&overwrite=true`);
     }
+    if (r.status === NO_SPACE) throw new NoSpaceError();
     if (!r.ok) throw new RemoteError(r.status);
     const { href, method } = (await r.json()) as { href: string; method?: string };
     let put: Response;
@@ -102,7 +108,16 @@ export class YandexDiskAdapter implements StorageAdapter {
     } catch (e) {
       throw offline(href, e);
     }
+    if (put.status === NO_SPACE) throw new NoSpaceError();
     if (!put.ok) throw new RemoteError(put.status);
+  }
+
+  async space(): Promise<DiskSpace | null> {
+    const r = await this.call('?fields=total_space,used_space,trash_size');
+    if (!r.ok) throw new RemoteError(r.status);
+    const j = (await r.json()) as { total_space?: number; used_space?: number; trash_size?: number };
+    if (!j.total_space) return null;
+    return { total: j.total_space, used: j.used_space ?? 0, trash: j.trash_size ?? 0 };
   }
 
   async remove(path: string): Promise<void> {

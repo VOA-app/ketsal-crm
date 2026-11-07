@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { todayISO } from '../../domain/dates';
-import { emptyData } from '../../domain/defaults';
+import { emptyData, PHOTO_SIDE, PHOTO_SIDE_SAVE } from '../../domain/defaults';
 import type { Lists, Settings as SettingsT, TemplateId } from '../../domain/types';
 import { clearBlobs } from '../../db/repo';
 import { TEMPLATE, ru } from '../../i18n/ru';
@@ -168,6 +168,7 @@ export function Settings() {
   const theme = useData((s) => s.data.settings.theme);
   const autoLock = useData((s) => s.data.settings.autoLockMinutes);
   const keepTakenAt = useData((s) => s.data.settings.keepTakenAt);
+  const photoMaxSide = useData((s) => s.data.settings.photoMaxSide);
 
   const demoReset = async () => {
     const ok = await ui().confirm({ title: S.demoResetTitle, text: S.demoResetText, ok: S.demoResetOk, danger: false });
@@ -257,6 +258,14 @@ export function Settings() {
             sub={S.keepTakenAtHint}
             checked={keepTakenAt}
             onChange={(v) => useData.getState().apply((tx) => tx.settings({ keepTakenAt: v }))}
+          />
+          <SwitchRow
+            title={S.savePhotoSpace}
+            sub={S.savePhotoSpaceHint}
+            checked={photoMaxSide <= PHOTO_SIDE_SAVE}
+            onChange={(v) =>
+              useData.getState().apply((tx) => tx.settings({ photoMaxSide: v ? PHOTO_SIDE_SAVE : PHOTO_SIDE }))
+            }
           />
         </div>
         <div className="section-title">{S.theme}</div>

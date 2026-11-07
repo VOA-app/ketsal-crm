@@ -6,12 +6,13 @@ import type { CorrItem, ClientInfo, UpdItem } from '../../domain/client';
 import { daysBetween } from '../../domain/dates';
 import { recentlyReminded, remindedAt, viewItems, type ViewItem } from '../../domain/reminders';
 import { fullName, nextCardNo, searchClients } from '../../domain/search';
+import { formatBytes, freeBytes } from '../../domain/space';
 import { lc } from '../../domain/text';
 import type { Client, Entity } from '../../domain/types';
 import { fmtDate, fmtDateShort, relDay } from '../../i18n/format';
 import { VISIT_TYPE, ru } from '../../i18n/ru';
 import { Avatar } from '../components/ClientBits';
-import { SyncButton } from '../components/SyncCard';
+import { openSyncSheet, spaceProblem, SyncButton } from '../components/SyncCard';
 import { Icon } from '../components/Icon';
 import { Empty, Fab, ScrollChips, SearchBox } from '../components/kit';
 import { actionSheet } from '../components/Sheet';
@@ -19,6 +20,7 @@ import { openClientForm } from '../forms/ClientForm';
 import { openMessage } from '../forms/MessageSheet';
 import { zoneName } from '../names';
 import { useData } from '../store';
+import { useSync } from '../sync';
 import { useView } from '../view';
 
 const R = ru.clients;
@@ -235,6 +237,37 @@ function ClientList() {
   );
 }
 
+/** Место на Яндекс Диске заканчивается или закончилось: скрывается до следующего запуска. */
+let spaceBannerHidden = false;
+
+function SpaceBanner() {
+  const [hidden, setHidden] = useState(spaceBannerHidden);
+  const { state, photosNoSpace, space } = useSync();
+  const problem = spaceProblem(state, photosNoSpace, space);
+  if (hidden || !problem) return null;
+  const S = ru.sync;
+  return (
+    <div className="banner">
+      <Icon name="cloud" />
+      <span>{problem === 'full' || !space ? S.bannerFull : S.bannerLow(formatBytes(freeBytes(space)))}</span>
+      <button type="button" className="btn btn-sm btn-primary" onClick={openSyncSheet}>
+        {S.bannerDo}
+      </button>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={S.bannerHide}
+        onClick={() => {
+          spaceBannerHidden = true;
+          setHidden(true);
+        }}
+      >
+        <Icon name="close" className="i-sm" />
+      </button>
+    </div>
+  );
+}
+
 /** Напоминание о резервной копии (SPEC §9.1): скрывается до следующего запуска. */
 let backupBannerHidden = false;
 
@@ -319,6 +352,7 @@ export function Clients() {
         </ScrollChips>
       </header>
       <div className="scroller">
+        {!clientSearch.trim() && <SpaceBanner />}
         {!clientSearch.trim() && <BackupBanner />}
         <ClientList />
       </div>
