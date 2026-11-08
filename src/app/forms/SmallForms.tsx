@@ -116,7 +116,8 @@ function ClientPicker({ onPick }: { onPick: (clientId: string) => void }) {
                     <div className="row-title">{fullName(c)}</div>
                     <div className="row-sub">
                       №{NBSP}
-                      {c.cardNo} · {fmtPhone(c.phone)}
+                      {c.cardNo}
+                      {c.phone ? ` · ${fmtPhone(c.phone)}` : ''}
                     </div>
                   </div>
                 </button>

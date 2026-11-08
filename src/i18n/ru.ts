@@ -586,7 +586,7 @@ export const ru = {
     title: 'Процедура',
     notFound: 'Процедура не найдена',
     edit: 'Изменить процедуру',
-    cardAndPhone: (no: number, phone: string) => `Карта № ${no} · ${phone}`,
+    cardAndPhone: (no: number, phone: string) => (phone ? `Карта № ${no} · ${phone}` : `Карта № ${no}`),
     model: (course: string) => `Модель · ${course}`,
     materials: 'Материалы',
     noAnesthesia: 'без анестезии',

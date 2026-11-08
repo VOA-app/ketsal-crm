@@ -175,8 +175,9 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
   async function save(startProc: boolean) {
     const e: Record<string, string> = {};
     if (!d.firstName.trim()) e.firstName = F.errFirstName;
+    // Телефон необязателен (решение салона 08.11.2026); если введён — должен быть полным
     const phone = normPhone(d.phone);
-    if (!phone || phone.length !== 12) e.phone = F.errPhone;
+    if (phone && phone.length !== 12) e.phone = F.errPhone;
     const no = parseInt(d.cardNo.replace(/\D/g, ''), 10);
     if (!no || no < 1) e.cardNo = F.errCardNo;
     else if (data.clients.some((x) => x.cardNo === no && x.id !== d.id)) e.cardNo = F.errCardTaken(no);
@@ -271,7 +272,7 @@ function ClientForm({ clientId, prefill = '' }: { clientId?: string; prefill?: s
               autoCapitalize="words"
             />
           </Field>
-          <Field label={F.phone} err={errors.phone}>
+          <Field label={F.phone} opt={ru.common.optional} err={errors.phone}>
             <input
               className="input"
               type="tel"

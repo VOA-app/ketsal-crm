@@ -123,7 +123,8 @@ function MessageSheet({ clientId, kind: kindIn, keyIn }: { clientId: string; kin
             <div className="t">{fullName(c)}</div>
             <div className="s">
               {channel}
-              {c.contact?.handle ? `: ${c.contact.handle}` : ''} · {fmtPhone(c.phone)}
+              {c.contact?.handle ? `: ${c.contact.handle}` : ''}
+              {c.phone ? ` · ${fmtPhone(c.phone)}` : ''}
             </div>
           </div>
         </div>

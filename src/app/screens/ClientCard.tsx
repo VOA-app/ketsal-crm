@@ -337,7 +337,7 @@ function DataTab({ c, inf, onPurge }: { c: Entity<Client>; inf: ClientInfo; onPu
       </div>
       <div className="card">
         <Kv k={C.fio}>{formalName(c)}</Kv>
-        <Kv k={C.phone}>{fmtPhone(c.phone)}</Kv>
+        <Kv k={C.phone}>{c.phone ? fmtPhone(c.phone) : ru.common.none}</Kv>
         <Kv k={C.where}>{ct}</Kv>
         <Kv k={C.birth}>{c.birth ? `${fmtDate(c.birth, true)}, ${C.age(ageOn(c.birth, today))}` : ru.common.none}</Kv>
         <Kv k={C.source}>{c.source || ru.common.none}</Kv>
@@ -455,8 +455,9 @@ export function ClientCard() {
           <Avatar c={c} size="avatar--xl" />
           <h1 className="display profile-name">{fullName(c)}</h1>
           <div className="profile-meta">
-            {fmtPhone(c.phone)}
-            {inf.first ? ` · ${C.since(fmtDate(inf.first.date, true))}` : ''}
+            {[c.phone ? fmtPhone(c.phone) : '', inf.first ? C.since(fmtDate(inf.first.date, true)) : '']
+              .filter(Boolean)
+              .join(' · ')}
           </div>
           {c.tags.length > 0 && (
             <div className="profile-tags">
@@ -468,10 +469,12 @@ export function ClientCard() {
             </div>
           )}
           <div className="quick">
-            <a href={`tel:${c.phone}`} className="quick-btn">
-              <Icon name="phone" />
-              {C.call}
-            </a>
+            {c.phone && (
+              <a href={`tel:${c.phone}`} className="quick-btn">
+                <Icon name="phone" />
+                {C.call}
+              </a>
+            )}
             <button type="button" className="quick-btn" onClick={() => openMessage(c.id)}>
               <Icon name="message" />
               {C.write}

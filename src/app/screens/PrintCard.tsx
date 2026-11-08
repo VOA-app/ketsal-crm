@@ -98,7 +98,7 @@ export function PrintCard() {
           <h4>{PR.client}</h4>
           <div className="pp-grid">
             {kv(PR.fio, formalName(c))}
-            {kv(PR.phone, fmtPhone(c.phone))}
+            {kv(PR.phone, c.phone ? fmtPhone(c.phone) : ru.common.none)}
             {kv(PR.birth, c.birth ? fmtDateNum(c.birth) : ru.common.none)}
             {kv(PR.firstVisit, inf.first ? fmtDateNum(inf.first.date) : ru.common.none)}
             {kv(PR.consentPd, c.consents?.pd?.date ? fmtDateNum(c.consents.pd.date) : PR.no2)}
